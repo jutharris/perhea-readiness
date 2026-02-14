@@ -8,6 +8,7 @@ import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
 import ManageAthletes from './components/ManageAthletes';
 import { storageService } from './services/storageService';
+import { isSupabaseConfigured } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
 
 const App: React.FC = () => {
@@ -21,8 +22,10 @@ const App: React.FC = () => {
   const [loginForm, setLoginForm] = useState({ email: '', name: '', role: 'ATHLETE' as UserRole });
   const [loading, setLoading] = useState(false);
   const [initChecked, setInitChecked] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const refreshData = async (currentUser: User) => {
+    if (!isSupabaseConfigured()) return;
     setLoading(true);
     try {
       if (currentUser.role === 'COACH') {
@@ -47,13 +50,25 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkSession = async () => {
-      const currentUser = storageService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-        await refreshData(currentUser);
+      try {
+        if (!isSupabaseConfigured()) {
+          setConfigError(`Missing Database Configuration. Check your Vercel/Local environment variables for SUPABASE_URL and SUPABASE_ANON_KEY.`);
+          setInitChecked(true);
+          return;
+        }
+
+        const currentUser = storageService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          await refreshData(currentUser);
+        }
+      } catch (err: any) {
+        console.error("Boot Error:", err);
+        setConfigError(`Boot Error: ${err.message}`);
+      } finally {
+        setInitChecked(true);
       }
-      setInitChecked(true);
     };
     checkSession();
   }, []);
@@ -67,8 +82,8 @@ const App: React.FC = () => {
       setUser(loggedUser);
       setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
       await refreshData(loggedUser);
-    } catch (err) {
-      alert("Database Connection Failed. Ensure your Supabase URL and Keys are correctly set.");
+    } catch (err: any) {
+      alert(err.message || "Database Connection Failed.");
     } finally {
       setLoading(false);
     }
@@ -87,16 +102,34 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (configError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-6 text-center">
+        <div className="max-w-md bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
+          <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-3xl mx-auto">⚙️</div>
+          <h1 className="text-2xl font-black text-slate-900">Database Connection</h1>
+          <p className="text-slate-500 text-sm leading-relaxed">
+            The app could not connect to your Supabase instance. If you have already added the keys to Vercel, you may need to redeploy the site for them to take effect.
+          </p>
+          <div className="text-left bg-slate-50 p-4 rounded-xl text-[10px] font-mono text-slate-400 break-all border border-slate-200">
+            {configError}
+          </div>
+          <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg active:scale-[0.98] transition-transform">Retry Connection</button>
+        </div>
+      </div>
+    );
+  }
+
   if (activeView === 'LOGIN') {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <div className="inline-flex w-20 h-20 bg-indigo-600 rounded-[2rem] items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-indigo-200 mb-8 transform -rotate-3 hover:rotate-0 transition-transform">P</div>
+            <div className="inline-flex w-20 h-20 bg-indigo-600 rounded-[2rem] items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-indigo-200 mb-8 transform -rotate-3">P</div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">PerHea Readiness</h1>
             <p className="text-slate-400 font-semibold mt-2">Elite Performance Logic</p>
           </div>
-          <form onSubmit={handleLogin} className="mt-8 space-y-6 bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+          <form onSubmit={handleLogin} className="mt-8 space-y-6 bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
             <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-8 border border-slate-100">
               {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
                 <button key={r} type="button" onClick={() => setLoginForm(prev => ({ ...prev, role: r }))} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${loginForm.role === r ? 'bg-white text-indigo-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -147,7 +180,7 @@ const App: React.FC = () => {
         <CoachDashboard 
           athletes={coachedAthletes} 
           allEntries={allEntries} 
-          onViewAthlete={(a) => {
+          onViewAthlete={(a: User) => {
             setSelectedAthlete(a);
             setActiveView('ATHLETE_DETAIL');
           }} 
