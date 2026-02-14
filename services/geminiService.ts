@@ -1,6 +1,11 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { WellnessEntry, User, UserRole } from "../types";
+
+const getAIInstance = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined') return null;
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * Analyzes individual athlete wellness data.
@@ -8,18 +13,17 @@ import { WellnessEntry, User, UserRole } from "../types";
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
   if (entries.length === 0) return "Awaiting daily data for analysis.";
   
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === 'undefined') return "AI analysis offline (Missing API Key).";
+  const ai = getAIInstance();
+  if (!ai) return "AI analysis offline (Missing API Key).";
   
-  const ai = new GoogleGenAI({ apiKey });
   const latest = entries[0];
-  
-  const prompt = `Act as an elite sports scientist. Analyze this athlete's data: ${JSON.stringify(latest)}. 
-  Provide 2 succinct bullet points of advice specifically for the ${role === 'COACH' ? 'coach' : 'athlete'}.`;
+  const prompt = `Act as an elite sports scientist. Analyze this athlete's wellness report: ${JSON.stringify(latest)}. 
+  Provide 2 succinct, high-impact bullet points of advice specifically for the ${role === 'COACH' ? 'coach' : 'athlete'}. 
+  Focus on readiness and immediate physical requirements.`;
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-2.5-flash-lite-latest", 
+      model: "gemini-3-flash-preview", 
       contents: prompt 
     });
     return response.text || "Prioritize recovery and professional protocol.";
@@ -35,16 +39,16 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
   if (athletes.length === 0) return "No athletes in squad.";
   
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === 'undefined') return "Squad AI briefing unavailable (Missing API Key).";
+  const ai = getAIInstance();
+  if (!ai) return "Squad AI briefing unavailable (Missing API Key).";
   
-  const ai = new GoogleGenAI({ apiKey });
-  
-  const prompt = `Analyze this squad's wellness data. Identify who needs rest or immediate intervention based on fatigue metrics. Data: ${JSON.stringify(allEntries.slice(0, 10))}`;
+  const prompt = `Act as a Head of Performance. Analyze the following squad wellness data and identify any critical outliers or athletes requiring immediate intervention/rest. 
+  Data Summary: ${JSON.stringify(allEntries.slice(0, 15))}. 
+  Provide a high-level summary of squad readiness.`;
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-2.5-flash-lite-latest", 
+      model: "gemini-3-flash-preview", 
       contents: prompt 
     });
     return response.text || "Check outlier reports manually.";
