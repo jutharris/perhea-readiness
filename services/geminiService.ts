@@ -2,22 +2,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { WellnessEntry, User, UserRole } from "../types";
 
-// Helper to safely get environment variables
-const getEnv = (key: string): string | undefined => {
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
-  } catch (e) {}
-  return undefined;
-};
-
 /**
  * Analyzes individual athlete wellness data.
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
   if (entries.length === 0) return "Awaiting daily data for analysis.";
   
-  const apiKey = getEnv('API_KEY');
-  if (!apiKey) return "AI analysis offline (Missing API Key).";
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined') return "AI analysis offline (Missing API Key).";
   
   const ai = new GoogleGenAI({ apiKey });
   const latest = entries[0];
@@ -27,10 +19,10 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-pro-preview", 
+      model: "gemini-2.5-flash-lite-latest", 
       contents: prompt 
     });
-    return response.text;
+    return response.text || "Prioritize recovery and professional protocol.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     return "Prioritize recovery and professional protocol.";
@@ -43,8 +35,8 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
   if (athletes.length === 0) return "No athletes in squad.";
   
-  const apiKey = getEnv('API_KEY');
-  if (!apiKey) return "Squad AI briefing unavailable (Missing API Key).";
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined') return "Squad AI briefing unavailable (Missing API Key).";
   
   const ai = new GoogleGenAI({ apiKey });
   
@@ -52,10 +44,10 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-pro-preview", 
+      model: "gemini-2.5-flash-lite-latest", 
       contents: prompt 
     });
-    return response.text;
+    return response.text || "Check outlier reports manually.";
   } catch (error) {
     console.error("Gemini Briefing Error:", error);
     return "Check outlier reports manually.";
