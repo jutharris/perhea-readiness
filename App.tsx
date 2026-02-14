@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
 import Dashboard from './components/Dashboard';
@@ -19,8 +19,9 @@ const App: React.FC = () => {
   const [coachedAthletes, setCoachedAthletes] = useState<User[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
   
-  // New Auth State
+  // Auth State
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [authForm, setAuthForm] = useState({ 
     email: '', 
     password: '', 
@@ -94,7 +95,7 @@ const App: React.FC = () => {
           authForm.lastName, 
           authForm.role
         );
-        alert("Account created! Please check your email for verification if required, then sign in.");
+        alert("Account created! Please check your email for verification. Once verified, log in here.");
         setIsSignUp(false);
         setLoading(false);
         return;
@@ -150,7 +151,7 @@ const App: React.FC = () => {
           <div className="text-center">
             <div className="inline-flex w-20 h-20 bg-indigo-600 rounded-[2rem] items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-indigo-200 mb-8 transform -rotate-3">P</div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">PerHea</h1>
-            <p className="text-slate-400 font-semibold mt-2">{isSignUp ? 'Create your athlete profile' : 'Elite Performance Login'}</p>
+            <p className="text-slate-400 font-semibold mt-2">Are you ready?</p>
           </div>
           
           <form onSubmit={handleAuth} className="mt-8 space-y-5 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
@@ -181,9 +182,29 @@ const App: React.FC = () => {
               <input type="email" required value={authForm.email} onChange={(e) => setAuthForm(prev => ({ ...prev, email: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="athlete@perhea.com" />
             </div>
             
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-              <input type="password" required value={authForm.password} onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="••••••••" />
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={authForm.password} 
+                  onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))} 
+                  className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold pr-14" 
+                  placeholder="••••••••" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-300 hover:text-indigo-600 transition-colors"
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button type="submit" disabled={loading} className="w-full py-5 mt-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all flex justify-center items-center gap-3">
@@ -191,7 +212,7 @@ const App: React.FC = () => {
             </button>
             
             <div className="text-center pt-2">
-              <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowPassword(false); }} className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
                 {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
               </button>
             </div>
