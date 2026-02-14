@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, WellnessEntry } from '../types';
 import Dashboard from './Dashboard';
@@ -11,7 +10,7 @@ const AthleteDetail: React.FC<any> = ({ athlete, entries, coachId, onBack }) => 
   return (
     <div className="space-y-8">
       <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
-      <h2 className="text-4xl font-black text-slate-900">{athlete.name}</h2>
+      <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
       <Dashboard entries={entries} user={athlete} onNewReport={() => {}} hideAction />
       <Insights entries={entries} role="COACH" />
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-4">
