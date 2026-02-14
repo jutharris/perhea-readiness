@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
@@ -19,7 +18,17 @@ const App: React.FC = () => {
   const [allAthletes, setAllAthletes] = useState<User[]>([]);
   const [coachedAthletes, setCoachedAthletes] = useState<User[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
-  const [loginForm, setLoginForm] = useState({ email: '', name: '', role: 'ATHLETE' as UserRole });
+  
+  // New Auth State
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [authForm, setAuthForm] = useState({ 
+    email: '', 
+    password: '', 
+    firstName: '', 
+    lastName: '', 
+    role: 'ATHLETE' as UserRole 
+  });
+  
   const [loading, setLoading] = useState(false);
   const [initChecked, setInitChecked] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -57,7 +66,7 @@ const App: React.FC = () => {
           return;
         }
 
-        const currentUser = storageService.getCurrentUser();
+        const currentUser = await storageService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
           setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
@@ -65,7 +74,6 @@ const App: React.FC = () => {
         }
       } catch (err: any) {
         console.error("Boot Error:", err);
-        setConfigError(`Boot Error: ${err.message}`);
       } finally {
         setInitChecked(true);
       }
@@ -73,24 +81,39 @@ const App: React.FC = () => {
     checkSession();
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginForm.email || !loginForm.name) return;
     setLoading(true);
     try {
-      const loggedUser = await storageService.login(loginForm.email, loginForm.name, loginForm.role);
+      let loggedUser: User;
+      if (isSignUp) {
+        loggedUser = await storageService.signUp(
+          authForm.email, 
+          authForm.password, 
+          authForm.firstName, 
+          authForm.lastName, 
+          authForm.role
+        );
+        alert("Account created! Please check your email for verification if required, then sign in.");
+        setIsSignUp(false);
+        setLoading(false);
+        return;
+      } else {
+        loggedUser = await storageService.signIn(authForm.email, authForm.password);
+      }
+      
       setUser(loggedUser);
       setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
       await refreshData(loggedUser);
     } catch (err: any) {
-      alert(err.message || "Database Connection Failed.");
+      alert(err.message || "Authentication Failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    storageService.logout();
+  const handleLogout = async () => {
+    await storageService.logout();
     setUser(null);
     setActiveView('LOGIN');
     setEntries([]);
@@ -122,34 +145,56 @@ const App: React.FC = () => {
 
   if (activeView === 'LOGIN') {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4">
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-12">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <div className="inline-flex w-20 h-20 bg-indigo-600 rounded-[2rem] items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-indigo-200 mb-8 transform -rotate-3">P</div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">PerHea Readiness</h1>
-            <p className="text-slate-400 font-semibold mt-2">Elite Performance Logic</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">PerHea</h1>
+            <p className="text-slate-400 font-semibold mt-2">{isSignUp ? 'Create your athlete profile' : 'Elite Performance Login'}</p>
           </div>
-          <form onSubmit={handleLogin} className="mt-8 space-y-6 bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-            <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-8 border border-slate-100">
-              {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
-                <button key={r} type="button" onClick={() => setLoginForm(prev => ({ ...prev, role: r }))} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${loginForm.role === r ? 'bg-white text-indigo-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>
-                  {r}
-                </button>
-              ))}
+          
+          <form onSubmit={handleAuth} className="mt-8 space-y-5 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
+            {isSignUp && (
+              <>
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-4 border border-slate-100">
+                  {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
+                    <button key={r} type="button" onClick={() => setAuthForm(prev => ({ ...prev, role: r }))} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${authForm.role === r ? 'bg-white text-indigo-600 shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
+                    <input type="text" required value={authForm.firstName} onChange={(e) => setAuthForm(prev => ({ ...prev, firstName: e.target.value }))} className="w-full px-4 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="First" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
+                    <input type="text" required value={authForm.lastName} onChange={(e) => setAuthForm(prev => ({ ...prev, lastName: e.target.value }))} className="w-full px-4 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="Last" />
+                  </div>
+                </div>
+              </>
+            )}
+            
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
+              <input type="email" required value={authForm.email} onChange={(e) => setAuthForm(prev => ({ ...prev, email: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="athlete@perhea.com" />
             </div>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                <input type="text" required value={loginForm.name} onChange={(e) => setLoginForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="e.g. Cristiano Ronaldo" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                <input type="email" required value={loginForm.email} onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="athlete@perhea.com" />
-              </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+              <input type="password" required value={authForm.password} onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="••••••••" />
             </div>
-            <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all flex justify-center items-center gap-3">
-              {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'ENTER ARENA'}
+
+            <button type="submit" disabled={loading} className="w-full py-5 mt-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all flex justify-center items-center gap-3">
+              {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (isSignUp ? 'CREATE ACCOUNT' : 'LOG IN')}
             </button>
+            
+            <div className="text-center pt-2">
+              <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+                {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </form>
         </div>
       </div>
