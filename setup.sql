@@ -1,66 +1,40 @@
--- Supabase Database Schema for PerHea Athlete Readiness
--- Run this in the Supabase SQL Editor to initialize your backend.
-
--- Enable UUID extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- 1. Profiles Table
+-- Update Profiles Table for secure auth and split names
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
-  full_name TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  full_name TEXT, -- Keeping for backward compatibility or display
   role TEXT CHECK (role IN ('ATHLETE', 'COACH')) NOT NULL,
   coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Wellness Entries
-CREATE TABLE IF NOT EXISTS wellness_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  session_type TEXT CHECK (session_type IN ('TRAINING', 'COMPETITION', 'TRAVEL', 'REST')),
-  last_session_rpe INTEGER CHECK (last_session_rpe >= 1 AND last_session_rpe <= 10),
-  energy INTEGER CHECK (energy >= 1 AND energy <= 7),
-  soreness INTEGER CHECK (soreness >= 1 AND soreness <= 7),
-  sleep_hours FLOAT,
-  sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 7),
-  stress INTEGER CHECK (stress >= 1 AND stress <= 7),
-  social INTEGER CHECK (social >= 1 AND social <= 7),
-  feeling_sick BOOLEAN DEFAULT false,
-  sick_last_48h BOOLEAN DEFAULT false,
-  injured BOOLEAN DEFAULT false,
-  injury_detail TEXT,
-  comments TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- Enable Row Level Security
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- 3. Sensitivity Profiles
-CREATE TABLE IF NOT EXISTS sensitivity_profiles (
-  coach_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
-  resilience TEXT CHECK (resilience IN ('CONSERVATIVE', 'BALANCED', 'ELITE')) DEFAULT 'BALANCED',
-  priority_metric TEXT CHECK (priority_metric IN ('SLEEP', 'ENERGY', 'SORENESS', 'STRESS')) DEFAULT 'ENERGY'
-);
+-- Simple Policy: Users can see their own profile
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- 4. Athlete Configs
-CREATE TABLE IF NOT EXISTS athlete_configs (
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
-  calibration TEXT CHECK (calibration IN ('STOIC', 'BALANCED', 'EXPRESSIVE')) DEFAULT 'BALANCED'
-);
+-- Trigger to create a profile automatically when a user signs up via Supabase Auth
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, first_name, last_name, role)
+  VALUES (
+    new.id, 
+    new.email, 
+    new.raw_user_meta_data->>'first_name', 
+    new.raw_user_meta_data->>'last_name', 
+    COALESCE(new.raw_user_meta_data->>'role', 'ATHLETE')
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 5. Coach Principles
-CREATE TABLE IF NOT EXISTS coach_principles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  coach_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  instruction TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 6. Coach Adjustments
-CREATE TABLE IF NOT EXISTS coach_adjustments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  coach_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  message TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+-- Apply the trigger
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
