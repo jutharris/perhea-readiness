@@ -1,3 +1,4 @@
+
 export type UserRole = 'ATHLETE' | 'COACH';
 export type SessionType = 'TRAINING' | 'COMPETITION' | 'TRAVEL' | 'REST';
 export type ReadinessStatus = 'READY' | 'MINDFUL' | 'RECOVERY';
@@ -10,7 +11,7 @@ export interface User {
   lastName: string;
   role: UserRole;
   coachId?: string;
-  inviteCode?: string; // New: coach's unique code
+  inviteCode?: string;
 }
 
 export interface WellnessEntry {
@@ -28,6 +29,7 @@ export interface WellnessEntry {
   social: number;    
   feelingSick: boolean;
   injured: boolean;
+  menstrualCycle: boolean;
   comments?: string;
 }
 
