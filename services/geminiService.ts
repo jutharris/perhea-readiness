@@ -1,14 +1,18 @@
 import { GoogleGenAI } from "@google/genai";
 import { WellnessEntry, User, UserRole } from "../types";
 
+/**
+ * Returns a GoogleGenAI instance initialized with the API key from environment.
+ * Complies with strict direct apiKey initialization guideline.
+ */
 const getAIInstance = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === 'undefined') return null;
-  return new GoogleGenAI({ apiKey });
+  if (!process.env.API_KEY || process.env.API_KEY === 'undefined') return null;
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 /**
  * Analyzes individual athlete wellness data.
+ * Task: Basic Summarization/Advice.
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
   if (entries.length === 0) return "Awaiting daily data for analysis.";
@@ -22,10 +26,12 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
   Focus on readiness and immediate physical requirements.`;
 
   try {
+    // Basic summarization task uses gemini-3-flash-preview
     const response = await ai.models.generateContent({ 
       model: "gemini-3-flash-preview", 
       contents: prompt 
     });
+    // .text is a property, not a method
     return response.text || "Prioritize recovery and professional protocol.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
@@ -35,6 +41,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
 
 /**
  * Analyzes squad data for coaching staff.
+ * Task: Outlier detection and readiness summary (Complex reasoning).
  */
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
   if (athletes.length === 0) return "No athletes in squad.";
@@ -47,8 +54,9 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
   Provide a high-level summary of squad readiness.`;
 
   try {
+    // Complex data analysis and reasoning task uses gemini-3-pro-preview
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3-pro-preview", 
       contents: prompt 
     });
     return response.text || "Check outlier reports manually.";
