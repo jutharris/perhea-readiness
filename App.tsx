@@ -5,7 +5,6 @@ import Dashboard from './components/Dashboard';
 import Insights from './components/Insights';
 import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
-import ManageAthletes from './components/ManageAthletes';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
@@ -15,37 +14,40 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('LOGIN');
   const [entries, setEntries] = useState<WellnessEntry[]>([]);
   const [allEntries, setAllEntries] = useState<WellnessEntry[]>([]);
-  const [allAthletes, setAllAthletes] = useState<User[]>([]);
   const [coachedAthletes, setCoachedAthletes] = useState<User[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   
-  // Auth State
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [authForm, setAuthForm] = useState({ 
-    email: '', 
-    password: '', 
-    firstName: '', 
-    lastName: '', 
-    role: 'ATHLETE' as UserRole 
-  });
-  
+  // Auth Flow State
+  const [authMode, setAuthMode] = useState<'LANDING' | 'EMAIL_SIGNUP' | 'EMAIL_LOGIN'>('LANDING');
+  const [authRole, setAuthRole] = useState<UserRole>('ATHLETE');
+  const [authForm, setAuthForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
   const [loading, setLoading] = useState(false);
   const [initChecked, setInitChecked] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+
+  // Catch Join Link in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('join');
+    if (code) {
+      localStorage.setItem('pending_join_code', code);
+      setInviteCode(code);
+    } else {
+      setInviteCode(localStorage.getItem('pending_join_code'));
+    }
+  }, []);
 
   const refreshData = async (currentUser: User) => {
     if (!isSupabaseConfigured()) return;
     setLoading(true);
     try {
       if (currentUser.role === 'COACH') {
-        const [entriesData, athletesData, coachedData] = await Promise.all([
+        const [entriesData, coachedData] = await Promise.all([
           storageService.getAllEntries(),
-          storageService.getAllUsers(),
           storageService.getCoachedAthletes(currentUser.id)
         ]);
         setAllEntries(entriesData);
-        setAllAthletes(athletesData.filter(u => u.role === 'ATHLETE'));
         setCoachedAthletes(coachedData);
       } else {
         const userData = await storageService.getEntriesForUser(currentUser.id);
@@ -62,16 +64,21 @@ const App: React.FC = () => {
     const checkSession = async () => {
       try {
         if (!isSupabaseConfigured()) {
-          setConfigError(`Missing Database Configuration. Check your Vercel/Local environment variables for SUPABASE_URL and SUPABASE_ANON_KEY.`);
+          setConfigError(`Database Configuration Required.`);
           setInitChecked(true);
           return;
         }
-
         const currentUser = await storageService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
           setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
           await refreshData(currentUser);
+          
+          // Check for pending join code
+          const pendingCode = localStorage.getItem('pending_join_code');
+          if (pendingCode && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
+            handleJoinSquad(pendingCode, currentUser.id);
+          }
         }
       } catch (err: any) {
         console.error("Boot Error:", err);
@@ -82,32 +89,48 @@ const App: React.FC = () => {
     checkSession();
   }, []);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleJoinSquad = async (code: string, userId: string) => {
+    try {
+      const coach = await storageService.joinSquadByCode(code, userId);
+      alert(`Successfully joined ${coach.first_name}'s squad!`);
+      localStorage.removeItem('pending_join_code');
+      const updatedUser = await storageService.getCurrentUser();
+      if (updatedUser) setUser(updatedUser);
+    } catch (err: any) {
+      console.error("Join Squad Error:", err);
+      localStorage.removeItem('pending_join_code');
+    }
+  };
+
+  const handleSocialAuth = async (provider: 'google' | 'apple') => {
+    try {
+      setLoading(true);
+      await storageService.signInWithSocial(provider, authRole);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       let loggedUser: User;
-      if (isSignUp) {
-        loggedUser = await storageService.signUp(
-          authForm.email, 
-          authForm.password, 
-          authForm.firstName, 
-          authForm.lastName, 
-          authForm.role
-        );
-        alert("Account created! Please check your email for verification. Once verified, log in here.");
-        setIsSignUp(false);
-        setLoading(false);
+      if (authMode === 'EMAIL_SIGNUP') {
+        loggedUser = await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
+        alert("Account created. Please confirm your email.");
+        setAuthMode('EMAIL_LOGIN');
         return;
       } else {
         loggedUser = await storageService.signIn(authForm.email, authForm.password);
       }
-      
       setUser(loggedUser);
       setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
       await refreshData(loggedUser);
     } catch (err: any) {
-      alert(err.message || "Authentication Failed. Please check your credentials.");
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -121,102 +144,67 @@ const App: React.FC = () => {
   };
 
   if (!initChecked) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-       <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-white flex items-center justify-center">
+       <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
-  if (configError) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-6 text-center">
-        <div className="max-w-md bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100 space-y-6">
-          <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-3xl mx-auto">⚙️</div>
-          <h1 className="text-2xl font-black text-slate-900">Database Connection</h1>
-          <p className="text-slate-500 text-sm leading-relaxed">
-            The app could not connect to your Supabase instance. If you have already added the keys to Vercel, you may need to redeploy the site for them to take effect.
-          </p>
-          <div className="text-left bg-slate-50 p-4 rounded-xl text-[10px] font-mono text-slate-400 break-all border border-slate-200">
-            {configError}
-          </div>
-          <button onClick={() => window.location.reload()} className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg active:scale-[0.98] transition-transform">Retry Connection</button>
-        </div>
-      </div>
-    );
-  }
-
   if (activeView === 'LOGIN') {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-12">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <div className="inline-flex w-20 h-20 bg-indigo-600 rounded-[2rem] items-center justify-center text-white text-4xl font-bold shadow-2xl shadow-indigo-200 mb-8 transform -rotate-3">P</div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">PerHea</h1>
-            <p className="text-slate-400 font-semibold mt-2">Are you ready?</p>
-          </div>
+      <div className="min-h-screen bg-white flex flex-col items-center px-6 pt-24">
+        <div className="w-full max-w-[400px] text-center space-y-4">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Performance-Driven<br/>Readiness</h1>
+          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">
+            Track your readiness and optimize your training. Join the elite community for free.
+          </p>
           
-          <form onSubmit={handleAuth} className="mt-8 space-y-5 bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100">
-            {isSignUp && (
-              <>
-                <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-4 border border-slate-100">
-                  {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
-                    <button key={r} type="button" onClick={() => setAuthForm(prev => ({ ...prev, role: r }))} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${authForm.role === r ? 'bg-white text-indigo-600 shadow-sm scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
-                    <input type="text" required value={authForm.firstName} onChange={(e) => setAuthForm(prev => ({ ...prev, firstName: e.target.value }))} className="w-full px-4 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="First" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
-                    <input type="text" required value={authForm.lastName} onChange={(e) => setAuthForm(prev => ({ ...prev, lastName: e.target.value }))} className="w-full px-4 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="Last" />
-                  </div>
-                </div>
-              </>
-            )}
-            
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
-              <input type="email" required value={authForm.email} onChange={(e) => setAuthForm(prev => ({ ...prev, email: e.target.value }))} className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold" placeholder="athlete@perhea.com" />
-            </div>
-            
-            <div className="space-y-1 relative">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-              <div className="relative">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  required 
-                  value={authForm.password} 
-                  onChange={(e) => setAuthForm(prev => ({ ...prev, password: e.target.value }))} 
-                  className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-indigo-50 focus:bg-white transition-all text-sm font-bold pr-14" 
-                  placeholder="••••••••" 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-300 hover:text-indigo-600 transition-colors"
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  )}
+          <div className="pt-10 space-y-3">
+            <div className="text-sm font-bold text-slate-400 pb-2">I am an:</div>
+            <div className="flex bg-slate-50 p-1 rounded-xl mb-6">
+              {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
+                <button key={r} onClick={() => setAuthRole(r)} className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${authRole === r ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+                  {r}
                 </button>
-              </div>
+              ))}
             </div>
 
-            <button type="submit" disabled={loading} className="w-full py-5 mt-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all flex justify-center items-center gap-3">
-              {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (isSignUp ? 'CREATE ACCOUNT' : 'LOG IN')}
+            <button onClick={() => handleSocialAuth('google')} className="w-full py-4 px-6 border-2 border-slate-200 rounded-xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors">
+              <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+              Sign Up With Google
             </button>
-            
-            <div className="text-center pt-2">
-              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowPassword(false); }} className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
-                {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
+
+            <button onClick={() => handleSocialAuth('apple')} className="w-full py-4 px-6 border-2 border-slate-200 rounded-xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors">
+              <svg className="w-5 h-5 fill-slate-900" viewBox="0 0 24 24"><path d="M17.05 20.28c-.96.95-2.04 1.72-3.12 1.72-1.2 0-1.56-.72-3-.72-1.44 0-1.8.72-3 .72-1.08 0-2.28-.84-3.24-1.8-1.92-2.04-3.36-5.88-3.36-9.12 0-3.36 2.16-5.16 4.2-5.16 1.08 0 2.04.72 2.64.72s1.56-.72 2.76-.72c1.08 0 2.4.6 3.24 1.56-1.56.96-1.32 3.12 0 4.2 1.2 1.2 2.76.6 2.76.6-.12 1.2-.72 2.4-1.56 3.48-.36.48-.6.96-.36 1.44zM12.12 4.12c0-1.08.48-2.16 1.2-2.88.72-.72 1.8-1.2 2.76-1.2.12 1.08-.36 2.16-1.08 2.76-.72.84-1.8 1.32-2.88 1.32z"/></svg>
+              Sign Up With Apple
+            </button>
+
+            {authMode === 'LANDING' ? (
+              <button onClick={() => setAuthMode('EMAIL_SIGNUP')} className="w-full py-4 px-6 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all">
+                Sign Up With Email
               </button>
+            ) : (
+              <form onSubmit={handleEmailAuth} className="space-y-4 pt-4 text-left">
+                {authMode === 'EMAIL_SIGNUP' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" placeholder="First Name" required value={authForm.firstName} onChange={e => setAuthForm({...authForm, firstName: e.target.value})} className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100" />
+                    <input type="text" placeholder="Last Name" required value={authForm.lastName} onChange={e => setAuthForm({...authForm, lastName: e.target.value})} className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100" />
+                  </div>
+                )}
+                <input type="email" placeholder="Email Address" required value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100" />
+                <input type="password" placeholder="Password" required value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-100" />
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black shadow-lg">{authMode === 'EMAIL_SIGNUP' ? 'Create Account' : 'Log In'}</button>
+                <button type="button" onClick={() => setAuthMode('LANDING')} className="w-full text-xs font-bold text-slate-400">Cancel</button>
+              </form>
+            )}
+
+            <div className="pt-12 text-sm text-slate-500 font-medium">
+              Already a Member? <button onClick={() => setAuthMode('EMAIL_LOGIN')} className="text-indigo-600 font-bold hover:underline">Log In</button>
             </div>
-          </form>
+            
+            <p className="text-[10px] text-slate-400 px-8 pt-8 leading-relaxed">
+              By continuing, you are agreeing to our <span className="text-indigo-600 cursor-pointer">Terms of Service</span> and <span className="text-indigo-600 cursor-pointer">Privacy Policy</span>.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -227,7 +215,15 @@ const App: React.FC = () => {
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-10">
           <Dashboard entries={entries} user={user} onNewReport={() => setActiveView('FORM')} />
-          <Insights entries={entries} />
+          {user.coachId ? <Insights entries={entries} /> : (
+            <div className="p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 text-center space-y-4">
+              <p className="text-sm font-bold text-indigo-900">Not linked to a coach yet.</p>
+              <button onClick={() => {
+                const code = prompt("Enter Squad Invite Code:");
+                if (code) handleJoinSquad(code, user.id);
+              }} className="text-xs font-black bg-indigo-600 text-white px-6 py-3 rounded-xl">Join Your Squad</button>
+            </div>
+          )}
         </div>
       )}
       
@@ -238,12 +234,9 @@ const App: React.FC = () => {
         }} />
       )}
 
-      {activeView === 'INSIGHTS' && (
-        <Insights entries={entries} />
-      )}
-
       {activeView === 'COACH_DASHBOARD' && user && (
         <CoachDashboard 
+          coach={user}
           athletes={coachedAthletes} 
           allEntries={allEntries} 
           onViewAthlete={(a: User) => {
@@ -259,15 +252,6 @@ const App: React.FC = () => {
           entries={allEntries.filter(e => e.userId === selectedAthlete.id)} 
           coachId={user.id}
           onBack={() => setActiveView('COACH_DASHBOARD')}
-        />
-      )}
-
-      {activeView === 'MANAGE_ATHLETES' && user && (
-        <ManageAthletes 
-          allAthletes={allAthletes} 
-          coachedAthletes={coachedAthletes}
-          coachId={user.id}
-          onRefresh={() => refreshData(user)}
         />
       )}
     </Layout>
