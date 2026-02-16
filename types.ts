@@ -10,6 +10,7 @@ export interface User {
   lastName: string;
   role: UserRole;
   coachId?: string;
+  inviteCode?: string; // New: coach's unique code
 }
 
 export interface WellnessEntry {
@@ -30,4 +31,4 @@ export interface WellnessEntry {
   comments?: string;
 }
 
-export type View = 'LOGIN' | 'DASHBOARD' | 'FORM' | 'INSIGHTS' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'MANAGE_ATHLETES';
+export type View = 'LOGIN' | 'DASHBOARD' | 'FORM' | 'INSIGHTS' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL';
