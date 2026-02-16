@@ -1,5 +1,6 @@
+
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.1)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -17,7 +18,7 @@ CREATE TABLE public.profiles (
   last_name TEXT,
   role TEXT CHECK (role IN ('ATHLETE', 'COACH')) NOT NULL DEFAULT 'ATHLETE',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  invite_code TEXT UNIQUE, -- Short code for coaches (e.g., READY-1)
+  invite_code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -34,6 +35,7 @@ CREATE TABLE public.wellness_entries (
   social INTEGER DEFAULT 4,
   feeling_sick BOOLEAN DEFAULT false,
   injured BOOLEAN DEFAULT false,
+  menstrual_cycle BOOLEAN DEFAULT false,
   comments TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -66,7 +68,6 @@ RETURNS trigger AS $$
 DECLARE
   new_invite_code TEXT;
 BEGIN
-  -- Generate a short invite code if the user is a COACH
   IF (new.raw_user_meta_data->>'role' = 'COACH') THEN
     new_invite_code := upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6));
   ELSE
