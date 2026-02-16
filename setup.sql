@@ -1,21 +1,27 @@
--- 1. CLEANUP (Optional: Only run if you want a totally fresh start)
--- DROP TABLE IF EXISTS wellness_entries CASCADE;
--- DROP TABLE IF EXISTS coach_adjustments CASCADE;
--- DROP TABLE IF EXISTS profiles CASCADE;
+-- =========================================================
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2)
+-- =========================================================
 
--- 2. PROFILES TABLE
-CREATE TABLE IF NOT EXISTS public.profiles (
+-- 1. CLEANUP
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP TABLE IF EXISTS public.coach_adjustments;
+DROP TABLE IF EXISTS public.wellness_entries;
+DROP TABLE IF EXISTS public.profiles;
+
+-- 2. TABLE CREATION
+CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   first_name TEXT,
   last_name TEXT,
   role TEXT CHECK (role IN ('ATHLETE', 'COACH')) NOT NULL DEFAULT 'ATHLETE',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  invite_code TEXT UNIQUE, -- Short code for coaches (e.g., READY-1)
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. WELLNESS ENTRIES TABLE
-CREATE TABLE IF NOT EXISTS public.wellness_entries (
+CREATE TABLE public.wellness_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   session_type TEXT DEFAULT 'TRAINING',
@@ -32,8 +38,7 @@ CREATE TABLE IF NOT EXISTS public.wellness_entries (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 4. COACH ADJUSTMENTS TABLE
-CREATE TABLE IF NOT EXISTS public.coach_adjustments (
+CREATE TABLE public.coach_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   coach_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -41,51 +46,46 @@ CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 5. ENABLE ROW LEVEL SECURITY
+-- 3. SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 
--- 6. POLICIES: PROFILES
-CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Coaches can view their athletes" ON public.profiles FOR SELECT USING (
-  auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'COACH')
+CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
 );
+CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (auth.uid() = coach_id);
 
--- 7. POLICIES: WELLNESS ENTRIES
-CREATE POLICY "Athletes can view own entries" ON public.wellness_entries FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Athletes can insert own entries" ON public.wellness_entries FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Coaches can view athlete entries" ON public.wellness_entries FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE public.profiles.id = public.wellness_entries.user_id 
-    AND public.profiles.coach_id = auth.uid()
-  )
-);
-
--- 8. POLICIES: COACH ADJUSTMENTS
-CREATE POLICY "Users can view adjustments sent to them" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Coaches can view adjustments they sent" ON public.coach_adjustments FOR SELECT USING (auth.uid() = coach_id);
-CREATE POLICY "Coaches can insert adjustments" ON public.coach_adjustments FOR INSERT WITH CHECK (auth.uid() = coach_id);
-
--- 9. AUTH TRIGGER (Automatically creates profile on Sign Up)
+-- 4. AUTOMATION (SIGNUP TRIGGER)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  new_invite_code TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, email, first_name, last_name, role)
+  -- Generate a short invite code if the user is a COACH
+  IF (new.raw_user_meta_data->>'role' = 'COACH') THEN
+    new_invite_code := upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6));
+  ELSE
+    new_invite_code := NULL;
+  END IF;
+
+  INSERT INTO public.profiles (id, email, first_name, last_name, role, invite_code)
   VALUES (
-    new.id, 
-    new.email, 
-    new.raw_user_meta_data->>'first_name', 
-    new.raw_user_meta_data->>'last_name', 
-    COALESCE(new.raw_user_meta_data->>'role', 'ATHLETE')
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'first_name',
+    new.raw_user_meta_data->>'last_name',
+    COALESCE(new.raw_user_meta_data->>'role', 'ATHLETE'),
+    new_invite_code
   );
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
