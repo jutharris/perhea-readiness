@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 import { User, WellnessEntry, UserRole, ReadinessStatus } from '../types';
 
@@ -41,7 +42,7 @@ export const storageService = {
           prompt: 'select_account'
         },
         data: {
-          role: role // Pass role to trigger
+          role: role
         }
       }
     });
@@ -135,6 +136,7 @@ export const storageService = {
       social: entryData.social,
       feeling_sick: entryData.feelingSick,
       injured: entryData.injured,
+      menstrual_cycle: entryData.menstrualCycle,
       comments: entryData.comments
     }]);
     if (error) throw error;
@@ -147,7 +149,7 @@ export const storageService = {
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: d.sleep_hours, sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
-      feelingSick: d.feeling_sick, injured: d.injured, comments: d.comments
+      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments
     }));
   },
 
@@ -158,7 +160,7 @@ export const storageService = {
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: d.sleep_hours, sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
-      feelingSick: d.feeling_sick, injured: d.injured, comments: d.comments
+      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments
     }));
   },
 
@@ -186,7 +188,7 @@ export const storageService = {
     const avg = (latest.energy + latest.soreness + latest.sleepQuality + (8 - latest.stress) + latest.social) / 5;
     const score = Math.round((avg / 7) * 100);
     let status: ReadinessStatus = 'READY';
-    if (score < 40 || latest.injured || latest.feelingSick) status = 'RECOVERY';
+    if (score < 40 || latest.injured || latest.feelingSick || latest.menstrualCycle) status = 'RECOVERY';
     else if (score < 65) status = 'MINDFUL';
     return { status, score, trend: 'STABLE', acwr: 1.0 };
   }
