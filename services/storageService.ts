@@ -25,8 +25,27 @@ export const storageService = {
       firstName: profile.first_name || '',
       lastName: profile.last_name || '',
       role: profile.role,
-      coachId: profile.coach_id
+      coachId: profile.coach_id,
+      inviteCode: profile.invite_code
     };
+  },
+
+  signInWithSocial: async (provider: 'google' | 'apple', role: UserRole) => {
+    checkConfig();
+    const { error } = await supabase!.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account'
+        },
+        data: {
+          role: role // Pass role to trigger
+        }
+      }
+    });
+    if (error) throw error;
   },
 
   signUp: async (email: string, password: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
@@ -74,8 +93,27 @@ export const storageService = {
       firstName: profile.first_name,
       lastName: profile.last_name,
       role: profile.role,
-      coachId: profile.coach_id
+      coachId: profile.coach_id,
+      inviteCode: profile.invite_code
     };
+  },
+
+  joinSquadByCode: async (code: string, athleteId: string) => {
+    checkConfig();
+    const { data: coachProfile, error } = await supabase!
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .eq('invite_code', code.toUpperCase())
+      .single();
+
+    if (error || !coachProfile) throw new Error("Invalid Squad Code.");
+
+    await supabase!
+      .from('profiles')
+      .update({ coach_id: coachProfile.id })
+      .eq('id', athleteId);
+
+    return coachProfile;
   },
 
   logout: async () => {
@@ -124,19 +162,6 @@ export const storageService = {
     }));
   },
 
-  getAllUsers: async (): Promise<User[]> => {
-    checkConfig();
-    const { data } = await supabase!.from('profiles').select('*');
-    return (data || []).map(d => ({ 
-      id: d.id, 
-      email: d.email, 
-      firstName: d.first_name, 
-      lastName: d.last_name, 
-      role: d.role, 
-      coachId: d.coach_id 
-    }));
-  },
-
   getCoachedAthletes: async (coachId: string): Promise<User[]> => {
     checkConfig();
     const { data } = await supabase!.from('profiles').select('*').eq('role', 'ATHLETE').eq('coach_id', coachId);
@@ -148,16 +173,6 @@ export const storageService = {
       role: d.role, 
       coachId: d.coach_id 
     }));
-  },
-
-  assignAthleteToCoach: async (athleteId: string, coachId: string) => {
-    checkConfig();
-    await supabase!.from('profiles').update({ coach_id: coachId }).eq('id', athleteId);
-  },
-
-  removeAthleteFromCoach: async (athleteId: string) => {
-    checkConfig();
-    await supabase!.from('profiles').update({ coach_id: null }).eq('id', athleteId);
   },
 
   saveAdjustment: async (userId: string, coachId: string, message: string) => {
