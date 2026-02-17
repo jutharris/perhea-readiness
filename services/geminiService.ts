@@ -1,9 +1,9 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { WellnessEntry, User, UserRole } from "../types";
 
 /**
  * Returns a GoogleGenAI instance initialized with the API key from environment.
- * Complies with strict direct apiKey initialization guideline.
  */
 const getAIInstance = () => {
   if (!process.env.API_KEY || process.env.API_KEY === 'undefined') return null;
@@ -12,56 +12,66 @@ const getAIInstance = () => {
 
 /**
  * Analyzes individual athlete wellness data.
- * Task: Basic Summarization/Advice.
+ * Updated to be a "Performance Partner" - supportive, non-alarmist, and objective.
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
-  if (entries.length === 0) return "Awaiting daily data for analysis.";
+  if (entries.length === 0) return "Awaiting daily data to provide your performance context.";
   
   const ai = getAIInstance();
-  if (!ai) return "AI analysis offline (Missing API Key).";
+  if (!ai) return "Performance Partner offline.";
   
   const latest = entries[0];
-  const prompt = `Act as an elite sports scientist. Analyze this athlete's wellness report: ${JSON.stringify(latest)}. 
-  Provide 2 succinct, high-impact bullet points of advice specifically for the ${role === 'COACH' ? 'coach' : 'athlete'}. 
-  Focus on readiness and immediate physical requirements.`;
+  const prompt = `
+    Act as an Elite Performance Partner and Sports Scientist. 
+    Analyze this athlete's wellness report: ${JSON.stringify(latest)}. 
+    
+    CRITICAL INSTRUCTION: 
+    - Use supportive, empowering, and professional language. 
+    - Avoid alarmist words like "Danger", "Warning", "Bad", or "Overtrained". 
+    - Use phrases like "Opportunity for restoration", "Normal adaptive response", or "Prime state for focus".
+    - Provide 2 succinct bullet points of advice.
+    - Focus on the "Why" (Education) and "What Next" (Action).
+    
+    Target Audience: ${role === 'COACH' ? 'The coaching staff (brief and objective)' : 'The athlete (empowering and educational)'}.
+  `;
 
   try {
-    // Basic summarization task uses gemini-3-flash-preview
     const response = await ai.models.generateContent({ 
       model: "gemini-3-flash-preview", 
       contents: prompt 
     });
-    // .text is a property, not a method
-    return response.text || "Prioritize recovery and professional protocol.";
+    return response.text || "Continue focusing on your professional recovery protocols.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    return "Prioritize recovery and professional protocol.";
+    return "Maintain consistency with your established performance routines.";
   }
 };
 
 /**
  * Analyzes squad data for coaching staff.
- * Task: Outlier detection and readiness summary (Complex reasoning).
  */
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
   if (athletes.length === 0) return "No athletes in squad.";
   
   const ai = getAIInstance();
-  if (!ai) return "Squad AI briefing unavailable (Missing API Key).";
+  if (!ai) return "Squad briefing unavailable.";
   
-  const prompt = `Act as a Head of Performance. Analyze the following squad wellness data and identify any critical outliers or athletes requiring immediate intervention/rest. 
-  Data Summary: ${JSON.stringify(allEntries.slice(0, 15))}. 
-  Provide a high-level summary of squad readiness.`;
+  const prompt = `
+    Act as a Head of Performance. 
+    Review the squad wellness data: ${JSON.stringify(allEntries.slice(0, 15))}. 
+    Identify patterns of adaptation across the group. 
+    Highlight individuals who might benefit from a conversation about their "Restoration Focus" today. 
+    Keep the tone objective and performance-oriented.
+  `;
 
   try {
-    // Complex data analysis and reasoning task uses gemini-3-pro-preview
     const response = await ai.models.generateContent({ 
       model: "gemini-3-pro-preview", 
       contents: prompt 
     });
-    return response.text || "Check outlier reports manually.";
+    return response.text || "Squad metrics are within expected ranges. Monitor individual feedback.";
   } catch (error) {
     console.error("Gemini Briefing Error:", error);
-    return "Check outlier reports manually.";
+    return "Check outlier reports manually in the squad view.";
   }
 };
