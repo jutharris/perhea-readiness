@@ -11,8 +11,8 @@ const getAIInstance = () => {
 };
 
 /**
- * Analyzes individual athlete wellness data.
- * Updated to be a "Performance Partner" - supportive, non-alarmist, and objective.
+ * Analyzes individual athlete wellness data using pattern recognition.
+ * Acts as a subtle, knowledgeable mirror rather than an alarmist auditor.
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
   if (entries.length === 0) return "Awaiting daily data to provide your performance context.";
@@ -20,19 +20,29 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
   
-  const latest = entries[0];
+  // Provide enough history (up to 30 days) for pattern recognition
+  const contextData = entries.slice(0, 30);
+  
   const prompt = `
-    Act as an Elite Performance Partner and Sports Scientist. 
-    Analyze this athlete's wellness report: ${JSON.stringify(latest)}. 
+    Act as an Individualized Pattern Recognition Engine and Performance Partner. 
+    Review the last 30 entries of wellness data (newest first): ${JSON.stringify(contextData)}. 
     
-    CRITICAL INSTRUCTION: 
-    - Use supportive, empowering, and professional language. 
-    - Avoid alarmist words like "Danger", "Warning", "Bad", or "Overtrained". 
-    - Use phrases like "Opportunity for restoration", "Normal adaptive response", or "Prime state for focus".
-    - Provide 2 succinct bullet points of advice.
-    - Focus on the "Why" (Education) and "What Next" (Action).
+    YOUR CORE PHILOSOPHY:
+    - You are a "mirror" (subtle and knowledgeable), not a "judge" (alarmist).
+    - Avoid gamification, medals, or streaks. Focus on "Clarity-as-a-Service."
+    - Use supportive, professional, and objective language. Avoid "Danger," "Warning," or "Bad."
+
+    SPECIFIC PATTERN RECOGNITION TASKS:
+    1. THE MENSTRUAL CYCLE "GHOST": Look for a consistent dip in metrics (Energy, Soreness, Sleep) roughly 4 days BEFORE the "menstrualCycle" toggle is set to TRUE in previous months. If you see this pattern emerging now, provide "permission to be tired" rather than flagging it as a training issue.
+    2. THE "PRE-ILLNESS" SIGNATURE: Analyze entries preceding any "feelingSick: true" flags. Does this person show a specific drop in Sleep Quality or a spike in Stress first? If their current data matches their unique "pre-illness signature," suggest a subtle pivot to restoration (e.g., extra sleep) without causing alarm.
+    3. THE "WHY": Educate the user on how their biological data is responding to their life and training context.
+
+    OUTPUT FORMAT:
+    - Provide 2-3 short, meaningful sentences. 
+    - No bullet points unless absolutely necessary for clarity.
+    - Focus on "Actionable Empowerment."
     
-    Target Audience: ${role === 'COACH' ? 'The coaching staff (brief and objective)' : 'The athlete (empowering and educational)'}.
+    Target Audience: ${role === 'COACH' ? 'Brief, objective briefing for staff.' : 'Direct, empowering, and subtle insight for the individual.'}.
   `;
 
   try {
@@ -58,10 +68,10 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
   
   const prompt = `
     Act as a Head of Performance. 
-    Review the squad wellness data: ${JSON.stringify(allEntries.slice(0, 15))}. 
-    Identify patterns of adaptation across the group. 
-    Highlight individuals who might benefit from a conversation about their "Restoration Focus" today. 
-    Keep the tone objective and performance-oriented.
+    Review the squad wellness data: ${JSON.stringify(allEntries.slice(0, 20))}. 
+    Identify collective patterns of adaptation. 
+    Highlight individuals whose data suggests a shift into a "Restoration Focus" phase based on their historical signatures. 
+    Keep the tone objective, technical, and performance-oriented.
   `;
 
   try {
