@@ -12,27 +12,49 @@ export const storageService = {
     
     try {
       const { data: { session }, error: sessionError } = await supabase!.auth.getSession();
-      if (sessionError || !session?.user) return null;
+      if (sessionError) {
+        console.error("Session Error:", sessionError);
+        return null;
+      }
+      if (!session?.user) return null;
 
       const authUser = session.user;
 
-      // Fetch profile from our table
+      // 1. Try to fetch existing profile
       let { data: profile, error: profileError } = await supabase!
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
-      // If profile doesn't exist yet, it's likely the trigger is still running. Retry a few times.
-      if (!profile && retryCount < 5) {
-        console.warn(`Profile not found for ${authUser.id}, retrying... (${retryCount + 1})`);
-        await new Promise(resolve => setTimeout(resolve, 800)); // Slightly longer delay for DB triggers
+      // 2. Retry logic if profile is missing (waiting for DB trigger)
+      if (!profile && retryCount < 3) {
+        console.warn(`Profile missing for ${authUser.id}, retrying... (${retryCount + 1})`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return storageService.getCurrentUser(retryCount + 1);
       }
 
+      // 3. SELF-HEALING: If profile is STILL missing, create it manually.
+      // This solves the "nothing entered into profiles" issue if the SQL trigger fails.
       if (!profile) {
-        console.error("Profile fetch failed after retries for user:", authUser.id);
-        return null;
+        console.info("Self-healing: Manually creating missing profile for", authUser.id);
+        const { data: newProfile, error: createError } = await supabase!
+          .from('profiles')
+          .insert([{
+            id: authUser.id,
+            email: authUser.email,
+            role: 'PENDING',
+            first_name: authUser.user_metadata?.first_name || authUser.user_metadata?.full_name?.split(' ')[0] || '',
+            last_name: authUser.user_metadata?.last_name || authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || ''
+          }])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Self-healing failed:", createError);
+          return null;
+        }
+        profile = newProfile;
       }
 
       return {
@@ -67,26 +89,12 @@ export const storageService = {
 
   completeOnboarding: async (userId: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
     checkConfig();
-    
-    const updateData: any = {
-      first_name: firstName,
-      last_name: lastName,
-      role: role
-    };
-
+    const updateData: any = { first_name: firstName, last_name: lastName, role: role };
     if (role === 'COACH') {
       updateData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     }
-
-    const { data, error } = await supabase!
-      .from('profiles')
-      .update(updateData)
-      .eq('id', userId)
-      .select()
-      .single();
-
+    const { data, error } = await supabase!.from('profiles').update(updateData).eq('id', userId).select().single();
     if (error) throw error;
-    
     return {
       id: data.id,
       email: data.email,
@@ -103,52 +111,27 @@ export const storageService = {
     const { data, error } = await supabase!.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          role: role
-        }
-      }
+      options: { data: { first_name: firstName, last_name: lastName, role: 'PENDING' } }
     });
-
     if (error) throw error;
     if (!data.user) throw new Error("Signup failed.");
-
-    return {
-      id: data.user.id,
-      email: data.user.email!,
-      firstName,
-      lastName,
-      role
-    };
+    return { id: data.user.id, email: data.user.email!, firstName, lastName, role: 'PENDING' };
   },
 
   signIn: async (email: string, password: string): Promise<User> => {
     checkConfig();
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed. Please check your internet connection.");
+    if (!user) throw new Error("Profile synchronization failed.");
     return user;
   },
 
   joinSquadByCode: async (code: string, athleteId: string) => {
     checkConfig();
-    const { data: coachProfile, error } = await supabase!
-      .from('profiles')
-      .select('id, first_name, last_name')
-      .eq('invite_code', code.toUpperCase())
-      .single();
-
+    const { data: coachProfile, error } = await supabase!.from('profiles').select('id').eq('invite_code', code.toUpperCase()).single();
     if (error || !coachProfile) throw new Error("Invalid Squad Code.");
-
-    await supabase!
-      .from('profiles')
-      .update({ coach_id: coachProfile.id })
-      .eq('id', athleteId);
-
+    await supabase!.from('profiles').update({ coach_id: coachProfile.id }).eq('id', athleteId);
     return coachProfile;
   },
 
@@ -203,12 +186,7 @@ export const storageService = {
     checkConfig();
     const { data } = await supabase!.from('profiles').select('*').eq('role', 'ATHLETE').eq('coach_id', coachId);
     return (data || []).map(d => ({ 
-      id: d.id, 
-      email: d.email, 
-      firstName: d.first_name, 
-      lastName: d.last_name, 
-      role: d.role as UserRole, 
-      coachId: d.coach_id 
+      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id 
     }));
   },
 
