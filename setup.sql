@@ -1,6 +1,6 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.3)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.4)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   invite_code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Indices for performance
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profiles_coach_id ON public.profiles(coach_id);
 
 CREATE TABLE IF NOT EXISTS public.wellness_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -75,11 +79,15 @@ DECLARE
   new_invite_code TEXT := NULL;
   user_role TEXT;
   full_name_val TEXT;
+  name_parts TEXT[];
   raw_meta JSONB;
 BEGIN
   raw_meta := new.raw_user_meta_data;
   user_role := COALESCE(raw_meta->>'role', 'ATHLETE');
-  full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name');
+  full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name', '');
+  
+  -- Use regex to split full name robustly
+  name_parts := regexp_split_to_array(trim(full_name_val), '\s+');
 
   -- Generate invite code only for coaches
   IF (user_role = 'COACH') THEN
@@ -90,8 +98,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(raw_meta->>'first_name', split_part(full_name_val, ' ', 1)),
-    COALESCE(raw_meta->>'last_name', substring(full_name_val from position(' ' in full_name_val) + 1)),
+    COALESCE(raw_meta->>'first_name', name_parts[1]),
+    COALESCE(raw_meta->>'last_name', array_to_string(name_parts[2:], ' ')),
     user_role,
     new_invite_code
   )
