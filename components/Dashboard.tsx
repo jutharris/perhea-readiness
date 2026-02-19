@@ -2,12 +2,11 @@
 import React, { useMemo } from 'react';
 import { WellnessEntry } from '../types';
 import { storageService } from '../services/storageService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceArea } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard: React.FC<any> = ({ entries, user, onNewReport, hideAction = false }) => {
   const readiness = storageService.calculateReadiness(entries);
   
-  // Mapping statuses to non-alarmist terminology
   const statusMap = {
     'READY': { label: 'PRIME STATE', color: 'bg-indigo-600', sub: 'High Capacity for Work' },
     'MINDFUL': { label: 'ADAPTIVE LOADING', color: 'bg-amber-400', sub: 'Body is Responding & Growing' },
@@ -33,10 +32,9 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, hideAction = fal
         avg7: getRollingAvg(7),
         avg28: getRollingAvg(28)
       };
-    }).slice(-28); // Standard 4-week window
+    }).slice(-28);
   }, [entries]);
 
-  // Identify a subtle "Focus Area" based on metrics
   const focusArea = useMemo(() => {
     if (entries.length === 0) return null;
     const l = entries[0];
@@ -50,7 +48,11 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, hideAction = fal
   }, [entries]);
 
   return (
-    <div className="space-y-10 text-center pb-12">
+    <div className="space-y-6 text-center pb-12">
+      <div className="text-left mb-8">
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Welcome, {user.firstName || 'Athlete'}!</h1>
+      </div>
+
       <div className="flex justify-center py-6">
         <div className={`w-44 h-44 rounded-full flex flex-col items-center justify-center text-white ${currentStatus.color} shadow-2xl transition-colors duration-700`}>
           <span className="text-4xl font-black">{readiness.score}%</span>
