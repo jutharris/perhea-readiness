@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, User } from '../types';
 
@@ -11,6 +12,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, onLogout }) => {
   const isCoach = user?.role === 'COACH';
+  const isPending = user?.role === 'PENDING';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -31,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
       <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-8 pb-32">
         {children}
       </main>
-      {user && (
+      {user && !isPending && (
         <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-lg px-8 py-4 flex space-x-12 rounded-[2rem] shadow-2xl border border-white/10">
           {isCoach ? (
             <>
