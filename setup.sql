@@ -1,6 +1,6 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.7)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v3.0)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -62,6 +62,7 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
+-- Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (auth.uid() = user_id);
@@ -70,24 +71,3 @@ CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries 
 );
 CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (auth.uid() = coach_id);
-
--- 4. AUTOMATION (FAIL-SAFE SIGNUP TRIGGER)
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  -- Basic fail-safe insert. Only uses fields guaranteed by auth.users.
-  -- We leave names and roles for the app to handle in onboarding.
-  INSERT INTO public.profiles (id, email, role)
-  VALUES (new.id, new.email, 'PENDING')
-  ON CONFLICT (id) DO NOTHING;
-  RETURN new;
-EXCEPTION WHEN OTHERS THEN
-  -- Even if the trigger fails, don't crash the whole auth process.
-  -- The app has self-healing logic to create the profile if missing.
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
