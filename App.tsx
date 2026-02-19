@@ -84,11 +84,22 @@ const App: React.FC = () => {
       } else {
         // AUTHENTICATED BUT NO PROFILE: Route to onboarding
         const metadata = session.user.user_metadata || {};
+        
+        // Smart name extraction from social providers
+        let firstName = metadata.given_name || metadata.first_name || '';
+        let lastName = metadata.family_name || metadata.last_name || '';
+        
+        if (!firstName && (metadata.full_name || metadata.name)) {
+          const parts = (metadata.full_name || metadata.name).trim().split(/\s+/);
+          firstName = parts[0];
+          lastName = parts.slice(1).join(' ');
+        }
+
         const partialUser: User = {
           id: session.user.id,
           email: session.user.email || '',
-          firstName: metadata.first_name || '',
-          lastName: metadata.last_name || '',
+          firstName,
+          lastName,
           role: 'PENDING'
         };
         setUser(partialUser);
