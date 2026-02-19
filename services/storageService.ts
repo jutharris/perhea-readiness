@@ -12,11 +12,38 @@ export const storageService = {
     const { data: { session } } = await supabase!.auth.getSession();
     if (!session) return null;
 
-    const { data: profile } = await supabase!
+    let { data: profile } = await supabase!
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
       .single();
+
+    // Self-healing: If profile is missing OR role mismatch (Auth Meta says COACH but DB says ATHLETE)
+    const meta = session.user.user_metadata;
+    const metaRole = meta?.role;
+
+    if (!profile || (metaRole === 'COACH' && profile.role === 'ATHLETE')) {
+      const upsertData: any = {
+        id: session.user.id,
+        email: session.user.email,
+        first_name: profile?.first_name || meta?.first_name || meta?.full_name?.split(' ')[0] || meta?.name?.split(' ')[0] || '',
+        last_name: profile?.last_name || meta?.last_name || meta?.full_name?.split(' ').slice(1).join(' ') || meta?.name?.split(' ').slice(1).join(' ') || '',
+        role: metaRole || profile?.role || 'ATHLETE'
+      };
+
+      // Ensure coach gets an invite code if they don't have one
+      if (upsertData.role === 'COACH' && !profile?.invite_code) {
+        upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      }
+
+      const { data: refreshedProfile } = await supabase!
+        .from('profiles')
+        .upsert(upsertData, { onConflict: 'id' })
+        .select()
+        .single();
+      
+      if (refreshedProfile) profile = refreshedProfile;
+    }
 
     if (!profile) return null;
 
@@ -80,23 +107,10 @@ export const storageService = {
     const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    const { data: profile, error: profileError } = await supabase!
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileError || !profile) throw new Error("Profile not found.");
-
-    return {
-      id: profile.id,
-      email: profile.email,
-      firstName: profile.first_name,
-      lastName: profile.last_name,
-      role: profile.role,
-      coachId: profile.coach_id,
-      inviteCode: profile.invite_code
-    };
+    // Use the robust getCurrentUser logic to ensure profile is synced
+    const user = await storageService.getCurrentUser();
+    if (!user) throw new Error("Profile not found.");
+    return user;
   },
 
   joinSquadByCode: async (code: string, athleteId: string) => {
@@ -185,7 +199,6 @@ export const storageService = {
   calculateReadiness: (entries: WellnessEntry[], entryIndex: number = 0) => {
     if (entries.length <= entryIndex) return { status: 'READY' as ReadinessStatus, score: 0, trend: 'STABLE', acwr: 1.0 };
     const latest = entries[entryIndex];
-    // Formula adjusted: stress and soreness are now 'High is Good' in the UI
     const avg = (latest.energy + latest.soreness + latest.sleepQuality + latest.stress + latest.social) / 5;
     const score = Math.round((avg / 7) * 100);
     let status: ReadinessStatus = 'READY';
