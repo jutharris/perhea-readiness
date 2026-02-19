@@ -11,48 +11,45 @@ const OAUTH_ROLE_KEY = 'perhea_intended_role';
 export const storageService = {
   getCurrentUser: async (): Promise<User | null> => {
     checkConfig();
-    const { data: { session } } = await supabase!.auth.getSession();
-    if (!session) return null;
+    
+    // Use getUser() instead of getSession() to ensure we have the latest server-side metadata
+    const { data: { user: authUser }, error: authError } = await supabase!.auth.getUser();
+    if (authError || !authUser) return null;
 
     let { data: profile } = await supabase!
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', authUser.id)
       .single();
 
-    const meta = session.user.user_metadata;
-    // Check localStorage for a role selection that might have been lost in OAuth redirect
+    const meta = authUser.user_metadata;
     const intendedRole = (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole) || meta?.role;
     const fullName = meta?.full_name || meta?.name || '';
     
-    // Self-healing: 
-    // 1. If profile doesn't exist
-    // 2. If profile exists but role is wrong (e.g., DB defaulted to ATHLETE but user chose COACH)
-    // 3. If names are missing
-    const needsFix = !profile || 
-                     (intendedRole && profile.role !== intendedRole) || 
-                     (!profile.first_name && fullName);
+    // Aggressive Correction:
+    // We detect if the DB profile is out of sync with what the user intended or what Auth says.
+    const roleMismatch = intendedRole && profile && profile.role !== intendedRole;
+    const nameMissing = profile && (!profile.first_name || profile.first_name === fullName);
 
-    if (needsFix) {
-      // Robust name splitting: "Justin Harris" -> ["Justin", "Harris"]
+    if (!profile || roleMismatch || nameMissing) {
+      // Split "Justin Harris" into ["Justin", "Harris"]
       const nameParts = fullName.trim().split(/\s+/);
       const splitFirstName = meta?.first_name || nameParts[0] || '';
       const splitLastName = meta?.last_name || nameParts.slice(1).join(' ') || '';
 
       const upsertData: any = {
-        id: session.user.id,
-        email: session.user.email,
+        id: authUser.id,
+        email: authUser.email,
         first_name: splitFirstName,
         last_name: splitLastName,
         role: intendedRole || profile?.role || 'ATHLETE'
       };
 
-      // Ensure coach gets an invite code
       if (upsertData.role === 'COACH' && !profile?.invite_code) {
         upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
       }
 
-      const { data: refreshedProfile, error: upsertError } = await supabase!
+      const { data: refreshedProfile } = await supabase!
         .from('profiles')
         .upsert(upsertData, { onConflict: 'id' })
         .select()
@@ -60,7 +57,6 @@ export const storageService = {
       
       if (refreshedProfile) {
         profile = refreshedProfile;
-        // Clean up the intent tracker once successfully synced
         localStorage.removeItem(OAUTH_ROLE_KEY);
       }
     }
@@ -80,8 +76,7 @@ export const storageService = {
 
   signInWithSocial: async (provider: 'google' | 'apple', role: UserRole) => {
     checkConfig();
-    // CRITICAL: Save the role to localStorage because OAuth redirects 
-    // often strip custom metadata from the initial session creation.
+    // Persist the role selection to survive the OAuth redirect
     localStorage.setItem(OAUTH_ROLE_KEY, role);
     
     const { error } = await supabase!.auth.signInWithOAuth({
@@ -93,7 +88,7 @@ export const storageService = {
           prompt: 'select_account'
         },
         data: {
-          role: role // We still send it, but localStorage is our safety net
+          role: role
         }
       }
     });
@@ -128,10 +123,10 @@ export const storageService = {
 
   signIn: async (email: string, password: string): Promise<User> => {
     checkConfig();
-    const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
+    const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile not found.");
+    if (!user) throw new Error("Profile synchronization failed.");
     return user;
   },
 
