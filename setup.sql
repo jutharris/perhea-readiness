@@ -1,13 +1,13 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.2)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.3)
 -- =========================================================
 
 -- 1. CLEANUP
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
--- 2. TABLE CREATION (Profiles table preserved, invite_code added for coaches)
+-- 2. TABLE CREATION
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
@@ -50,7 +50,6 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if they exist to avoid errors
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
     DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
@@ -75,10 +74,12 @@ RETURNS trigger AS $$
 DECLARE
   new_invite_code TEXT := NULL;
   user_role TEXT;
+  full_name_val TEXT;
   raw_meta JSONB;
 BEGIN
   raw_meta := new.raw_user_meta_data;
   user_role := COALESCE(raw_meta->>'role', 'ATHLETE');
+  full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name');
 
   -- Generate invite code only for coaches
   IF (user_role = 'COACH') THEN
@@ -89,8 +90,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(raw_meta->>'first_name', raw_meta->>'name', split_part(raw_meta->>'full_name', ' ', 1)),
-    COALESCE(raw_meta->>'last_name', split_part(raw_meta->>'full_name', ' ', 2)),
+    COALESCE(raw_meta->>'first_name', split_part(full_name_val, ' ', 1)),
+    COALESCE(raw_meta->>'last_name', substring(full_name_val from position(' ' in full_name_val) + 1)),
     user_role,
     new_invite_code
   )
