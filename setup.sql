@@ -1,6 +1,6 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.4)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.5)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Indices for performance
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_coach_id ON public.profiles(coach_id);
 
@@ -49,22 +48,24 @@ CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. SECURITY (RLS)
+-- 3. SECURITY (RLS) - UPDATED FOR FRONTEND ENFORCEMENT
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
-    DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+    DROP POLICY IF EXISTS "Users can manage own profile" ON public.profiles;
     DROP POLICY IF EXISTS "Athletes can manage own entries" ON public.wellness_entries;
     DROP POLICY IF EXISTS "Coaches can view their squad entries" ON public.wellness_entries;
     DROP POLICY IF EXISTS "Athletes view received adjustments" ON public.coach_adjustments;
     DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
+-- Critical Change: Allow ALL so the frontend can fix role/name discrepancies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
+
 CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
@@ -83,6 +84,7 @@ DECLARE
   raw_meta JSONB;
 BEGIN
   raw_meta := new.raw_user_meta_data;
+  -- Default to Athlete if metadata hasn't arrived yet (will be fixed by frontend sync)
   user_role := COALESCE(raw_meta->>'role', 'ATHLETE');
   full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name', '');
   
