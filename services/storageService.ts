@@ -6,73 +6,18 @@ const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
 };
 
-const OAUTH_ROLE_KEY = 'perhea_intended_role';
-
 export const storageService = {
   getCurrentUser: async (): Promise<User | null> => {
     checkConfig();
     
-    // 1. Get the current Auth user (fresh from server)
     const { data: { user: authUser }, error: authError } = await supabase!.auth.getUser();
     if (authError || !authUser) return null;
 
-    // 2. Fetch the existing DB profile
     let { data: profile } = await supabase!
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
       .single();
-
-    const meta = authUser.user_metadata;
-    // Look for our fallback intended role in localStorage
-    const storedRole = localStorage.getItem(OAUTH_ROLE_KEY) as UserRole | null;
-    const intendedRole = storedRole || (meta?.role as UserRole);
-    const fullName = meta?.full_name || meta?.name || '';
-    
-    // 3. Check for discrepancies (Race condition check)
-    // Discrepancy if: profile doesn't exist, role is wrong, or names aren't split
-    const needsCorrection = !profile || 
-                            (intendedRole && profile.role !== intendedRole) || 
-                            (!profile.first_name && fullName);
-
-    if (needsCorrection) {
-      console.log("Synchronizing profile: ", { intendedRole, currentProfile: profile?.role });
-      
-      const nameParts = fullName.trim().split(/\s+/);
-      const firstName = meta?.first_name || nameParts[0] || '';
-      const lastName = meta?.last_name || nameParts.slice(1).join(' ') || '';
-
-      const upsertData: any = {
-        id: authUser.id,
-        email: authUser.email,
-        first_name: firstName,
-        last_name: lastName,
-        role: intendedRole || profile?.role || 'ATHLETE'
-      };
-
-      // Ensure coach gets an invite code if missing
-      if (upsertData.role === 'COACH' && (!profile || !profile.invite_code)) {
-        upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      }
-
-      // Explicitly UPSERT and wait for results
-      const { error: syncError } = await supabase!
-        .from('profiles')
-        .upsert(upsertData, { onConflict: 'id' });
-      
-      if (!syncError) {
-        // Clear intent tracker and re-fetch the fresh, corrected profile
-        localStorage.removeItem(OAUTH_ROLE_KEY);
-        const { data: freshProfile } = await supabase!
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-        profile = freshProfile;
-      } else {
-        console.error("Profile sync failed:", syncError);
-      }
-    }
 
     if (!profile) return null;
 
@@ -87,11 +32,8 @@ export const storageService = {
     };
   },
 
-  signInWithSocial: async (provider: 'google' | 'apple', role: UserRole) => {
+  signInWithSocial: async (provider: 'google' | 'apple') => {
     checkConfig();
-    // We set this BEFORE the redirect so we know what the user wanted when they come back
-    localStorage.setItem(OAUTH_ROLE_KEY, role);
-    
     const { error } = await supabase!.auth.signInWithOAuth({
       provider,
       options: {
@@ -99,13 +41,43 @@ export const storageService = {
         queryParams: {
           access_type: 'offline',
           prompt: 'select_account'
-        },
-        data: {
-          role: role // Attempting to pass role metadata
         }
       }
     });
     if (error) throw error;
+  },
+
+  completeOnboarding: async (userId: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
+    checkConfig();
+    
+    const updateData: any = {
+      first_name: firstName,
+      last_name: lastName,
+      role: role
+    };
+
+    if (role === 'COACH') {
+      updateData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    const { data, error } = await supabase!
+      .from('profiles')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      email: data.email,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      role: data.role as UserRole,
+      inviteCode: data.invite_code,
+      coachId: data.coach_id
+    };
   },
 
   signUp: async (email: string, password: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
@@ -125,6 +97,12 @@ export const storageService = {
     if (error) throw error;
     if (!data.user) throw new Error("Signup failed.");
 
+    // Manually update the role if email signup (since trigger defaults to PENDING)
+    await supabase!
+      .from('profiles')
+      .update({ role: role, first_name: firstName, last_name: lastName })
+      .eq('id', data.user.id);
+
     return {
       id: data.user.id,
       email: data.user.email!,
@@ -139,7 +117,7 @@ export const storageService = {
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Synchronization failed.");
+    if (!user) throw new Error("Profile synchronization failed.");
     return user;
   },
 
@@ -163,7 +141,6 @@ export const storageService = {
 
   logout: async () => {
     checkConfig();
-    localStorage.removeItem(OAUTH_ROLE_KEY);
     await supabase!.auth.signOut();
   },
 
