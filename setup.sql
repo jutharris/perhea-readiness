@@ -1,17 +1,14 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.1)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.2)
 -- =========================================================
 
 -- 1. CLEANUP
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP TABLE IF EXISTS public.coach_adjustments;
-DROP TABLE IF EXISTS public.wellness_entries;
-DROP TABLE IF EXISTS public.profiles;
 
--- 2. TABLE CREATION
-CREATE TABLE public.profiles (
+-- 2. TABLE CREATION (Profiles table preserved, invite_code added for coaches)
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   first_name TEXT,
@@ -22,7 +19,7 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE public.wellness_entries (
+CREATE TABLE IF NOT EXISTS public.wellness_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   session_type TEXT DEFAULT 'TRAINING',
@@ -40,7 +37,7 @@ CREATE TABLE public.wellness_entries (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE public.coach_adjustments (
+CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   coach_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -52,6 +49,16 @@ CREATE TABLE public.coach_adjustments (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist to avoid errors
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+    DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+    DROP POLICY IF EXISTS "Athletes can manage own entries" ON public.wellness_entries;
+    DROP POLICY IF EXISTS "Coaches can view their squad entries" ON public.wellness_entries;
+    DROP POLICY IF EXISTS "Athletes view received adjustments" ON public.coach_adjustments;
+    DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
+EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
@@ -66,23 +73,33 @@ CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
-  new_invite_code TEXT;
+  new_invite_code TEXT := NULL;
+  user_role TEXT;
+  raw_meta JSONB;
 BEGIN
-  IF (new.raw_user_meta_data->>'role' = 'COACH') THEN
+  raw_meta := new.raw_user_meta_data;
+  user_role := COALESCE(raw_meta->>'role', 'ATHLETE');
+
+  -- Generate invite code only for coaches
+  IF (user_role = 'COACH') THEN
     new_invite_code := upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6));
-  ELSE
-    new_invite_code := NULL;
   END IF;
 
   INSERT INTO public.profiles (id, email, first_name, last_name, role, invite_code)
   VALUES (
     new.id,
     new.email,
-    new.raw_user_meta_data->>'first_name',
-    new.raw_user_meta_data->>'last_name',
-    COALESCE(new.raw_user_meta_data->>'role', 'ATHLETE'),
+    COALESCE(raw_meta->>'first_name', raw_meta->>'name', split_part(raw_meta->>'full_name', ' ', 1)),
+    COALESCE(raw_meta->>'last_name', split_part(raw_meta->>'full_name', ' ', 2)),
+    user_role,
     new_invite_code
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    role = EXCLUDED.role,
+    invite_code = COALESCE(profiles.invite_code, EXCLUDED.invite_code);
+    
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
