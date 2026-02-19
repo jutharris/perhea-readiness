@@ -8,7 +8,7 @@ import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
 import Onboarding from './components/Onboarding';
 import { storageService } from './services/storageService';
-import { isSupabaseConfigured } from './services/supabaseClient';
+import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
 
 const App: React.FC = () => {
@@ -61,37 +61,57 @@ const App: React.FC = () => {
     }
   };
 
+  // MAIN AUTH LISTENER: Replaces the one-time useEffect check
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        if (!isSupabaseConfigured()) {
-          setInitChecked(true);
-          return;
-        }
-        const currentUser = await storageService.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          
-          if (currentUser.role === 'PENDING') {
-            setActiveView('ONBOARDING');
-          } else {
-            setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-            await refreshData(currentUser);
+    if (!isSupabaseConfigured()) {
+      setInitChecked(true);
+      return;
+    }
+
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+      console.log(`Auth Event: ${event}`);
+      
+      if (session?.user) {
+        setLoading(true);
+        try {
+          // Get the full profile from our DB
+          const currentUser = await storageService.getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
             
-            // Check for pending join handshake
-            const pending = localStorage.getItem('pending_join_code');
-            if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
-              setShowInviteCard(true);
+            // Route based on role
+            if (currentUser.role === 'PENDING') {
+              setActiveView('ONBOARDING');
+            } else {
+              // Only refresh if we aren't already on a specific view (prevents jumping)
+              if (activeView === 'LOGIN' || activeView === 'ONBOARDING') {
+                setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+              }
+              await refreshData(currentUser);
+              
+              const pending = localStorage.getItem('pending_join_code');
+              if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
+                setShowInviteCard(true);
+              }
             }
           }
+        } catch (err) {
+          console.error("Profile Fetch Error:", err);
+        } finally {
+          setLoading(false);
+          setInitChecked(true);
         }
-      } catch (err: any) {
-        console.error("Boot Error:", err);
-      } finally {
+      } else {
+        // Logged out
+        setUser(null);
+        setActiveView('LOGIN');
         setInitChecked(true);
       }
+    });
+
+    return () => {
+      subscription.unsubscribe();
     };
-    checkSession();
   }, []);
 
   const handleJoinSquad = async (code: string) => {
@@ -118,9 +138,9 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       await storageService.signInWithSocial(provider);
+      // redirect happens here, listener will pick it up on return
     } catch (err: any) {
       alert(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -129,22 +149,14 @@ const App: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      let loggedUser: User;
       if (authMode === 'EMAIL_SIGNUP') {
-        loggedUser = await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
-        alert("Verification email sent!");
+        await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
+        alert("Success! Please check your email inbox to verify your account.");
         setAuthMode('EMAIL_LOGIN');
-        return;
       } else {
-        loggedUser = await storageService.signIn(authForm.email, authForm.password);
-      }
-      
-      setUser(loggedUser);
-      if (loggedUser.role === 'PENDING') {
-        setActiveView('ONBOARDING');
-      } else {
-        setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-        await refreshData(loggedUser);
+        const loggedUser = await storageService.signIn(authForm.email, authForm.password);
+        // The listener above will handle state updates, but we can set user here for immediate feedback if needed
+        setUser(loggedUser);
       }
     } catch (err: any) {
       alert(err.message);
@@ -154,16 +166,21 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setLoading(true);
     await storageService.logout();
     setUser(null);
     setActiveView('LOGIN');
     setEntries([]);
     setAuthMode('LANDING');
+    setLoading(false);
   };
 
-  if (!initChecked) return (
+  if (!initChecked || loading) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
-       <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+       <div className="flex flex-col items-center gap-6">
+         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+         <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing Arena...</p>
+       </div>
     </div>
   );
 
@@ -197,20 +214,6 @@ const App: React.FC = () => {
               <form onSubmit={handleEmailAuth} className="space-y-4 pt-2 text-left animate-in slide-in-from-top-2 duration-300">
                 {authMode === 'EMAIL_SIGNUP' && (
                   <>
-                    <div className="grid bg-slate-50 p-1.5 rounded-2xl mb-4">
-                      <div className="flex">
-                        {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
-                          <button 
-                            key={r} 
-                            type="button"
-                            onClick={() => setAuthRole(r)} 
-                            className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${authRole === r ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
-                          >
-                            {r}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <input type="text" placeholder="First Name" required value={authForm.firstName} onChange={e => setAuthForm({...authForm, firstName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
                       <input type="text" placeholder="Last Name" required value={authForm.lastName} onChange={e => setAuthForm({...authForm, lastName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
