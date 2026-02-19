@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
 import Dashboard from './components/Dashboard';
@@ -29,14 +29,11 @@ const App: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Safety timer to prevent infinite loading screen
+  // Safety timer
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isBooting) {
-        console.warn("Booting timed out. Forcing login screen.");
-        setIsBooting(false);
-      }
-    }, 8000);
+      if (isBooting) setIsBooting(false);
+    }, 10000);
     return () => clearTimeout(timer);
   }, [isBooting]);
 
@@ -73,9 +70,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // One single function to handle auth state changes
   const handleAuthChange = useCallback(async (session: any) => {
-    console.log("Processing Auth Change...", !!session?.user);
     if (!session?.user) {
       setUser(null);
       setActiveView('LOGIN');
@@ -84,9 +79,11 @@ const App: React.FC = () => {
     }
 
     try {
+      // Small delay for Supabase synchronization
+      await new Promise(r => setTimeout(r, 500));
+      
       const currentUser = await storageService.getCurrentUser();
       if (currentUser) {
-        console.log("Logged in as:", currentUser.email, "Role:", currentUser.role);
         setUser(currentUser);
         if (currentUser.role === 'PENDING') {
           setActiveView('ONBOARDING');
@@ -100,14 +97,11 @@ const App: React.FC = () => {
           }
         }
       } else {
-        console.error("User exists but profile fetch/creation failed.");
         setUser(null);
         setActiveView('LOGIN');
       }
     } catch (err) {
-      console.error("Auth Handshake Error:", err);
-      setUser(null);
-      setActiveView('LOGIN');
+      console.error("Auth Processing Error:", err);
     } finally {
       setIsBooting(false);
     }
@@ -119,10 +113,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // Single source of truth: onAuthStateChange
-    // This catches INITIAL_SESSION, SIGNED_IN, SIGNED_OUT
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Supabase Event: ${event}`);
+      console.log(`Auth Event: ${event}`);
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         handleAuthChange(session);
       } else if (event === 'SIGNED_OUT') {
@@ -145,11 +137,8 @@ const App: React.FC = () => {
       if (updatedUser) setUser(updatedUser);
       setShowInviteCard(false);
       setInviteCode(null);
-      alert("Squad joined successfully.");
     } catch (err: any) {
       alert("Invalid Squad Code.");
-      localStorage.removeItem('pending_join_code');
-      setShowInviteCard(false);
     } finally {
       setActionLoading(false);
     }
@@ -171,7 +160,7 @@ const App: React.FC = () => {
     try {
       if (authMode === 'EMAIL_SIGNUP') {
         await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
-        alert("Verification email sent! Check your inbox.");
+        alert("Success! Check your inbox to verify your email.");
         setAuthMode('EMAIL_LOGIN');
       } else {
         const loggedUser = await storageService.signIn(authForm.email, authForm.password);
@@ -192,14 +181,15 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     setActionLoading(true);
     await storageService.logout();
+    setActionLoading(false);
   };
 
   if (isBooting) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
        <div className="flex flex-col items-center gap-6">
          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-         <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing Arena...</p>
-         <button onClick={() => setIsBooting(false)} className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter hover:text-indigo-600 transition-colors">Skip Loading</button>
+         <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing Protocols...</p>
+         <button onClick={() => setIsBooting(false)} className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Skip Loading</button>
        </div>
     </div>
   );
@@ -258,16 +248,16 @@ const App: React.FC = () => {
           {isRefreshing && (
             <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full w-fit mx-auto border border-indigo-100">
               <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Refreshing Data...</span>
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Updating Stats...</span>
             </div>
           )}
           {showInviteCard && inviteCode && (
             <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 space-y-4">
-              <h3 className="text-xl font-black">Join Your Squad?</h3>
-              <p className="text-sm font-medium opacity-90 leading-relaxed">We detected a pending invitation code: <span className="font-black underline">{inviteCode}</span>. Link your account to your coach now?</p>
+              <h3 className="text-xl font-black">Join Squad?</h3>
+              <p className="text-sm font-medium opacity-90 leading-relaxed">Invitation detected: <span className="font-black underline">{inviteCode}</span>. Link your metrics?</p>
               <div className="flex gap-4 pt-2">
-                <button onClick={() => handleJoinSquad(inviteCode)} className="flex-1 bg-white text-indigo-600 py-4 rounded-2xl font-black text-xs">JOIN NOW</button>
-                <button onClick={() => {setShowInviteCard(false); localStorage.removeItem('pending_join_code');}} className="px-6 bg-white/20 py-4 rounded-2xl font-black text-xs">DECLINE</button>
+                <button onClick={() => handleJoinSquad(inviteCode)} className="flex-1 bg-white text-indigo-600 py-4 rounded-2xl font-black text-xs">JOIN</button>
+                <button onClick={() => {setShowInviteCard(false); localStorage.removeItem('pending_join_code');}} className="px-6 bg-white/20 py-4 rounded-2xl font-black text-xs">LATER</button>
               </div>
             </div>
           )}
@@ -276,7 +266,7 @@ const App: React.FC = () => {
           {!user.coachId && !showInviteCard && (
             <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
               <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><span className="text-slate-400">⚡</span></div>
-              <p className="text-sm font-bold text-slate-400">You are currently training solo.<br/>Enter a coach code to share data.</p>
+              <p className="text-sm font-bold text-slate-400">Solo Performance.<br/>Enter a coach code to share data.</p>
               <button onClick={() => {const code = prompt("Enter Squad Invite Code:"); if (code) handleJoinSquad(code);}} className="text-[10px] font-black bg-slate-900 text-white px-8 py-4 rounded-xl uppercase tracking-widest">Join Squad</button>
             </div>
           )}
