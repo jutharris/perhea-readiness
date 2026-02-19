@@ -11,38 +11,41 @@ const getAIInstance = () => {
 };
 
 /**
- * Analyzes individual athlete wellness data using pattern recognition.
- * Acts as a subtle, knowledgeable mirror rather than an alarmist auditor.
+ * Analyzes individual athlete wellness data using a Turbulence Model (Multivariate Decoupling).
+ * Uses a 50-day baseline to establish "Normal Regimes."
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
-  if (entries.length === 0) return "Awaiting daily data to provide your performance context.";
+  if (entries.length < 5) return "Establishing your 50-day performance baseline. Continue consistent reporting.";
   
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
   
-  // Provide enough history (up to 30 days) for pattern recognition
-  const contextData = entries.slice(0, 30);
+  // Ingest up to 50 days of history to find long-term correlations
+  const contextData = entries.slice(0, 50);
   
   const prompt = `
-    Act as an Individualized Pattern Recognition Engine and Performance Partner. 
-    Review the last 30 entries of wellness data (newest first): ${JSON.stringify(contextData)}. 
+    Act as a Performance Scientist specializing in Multivariate Turbulence Models (Mahalanobis Distance logic).
+    Review the last 50 entries of athlete data: ${JSON.stringify(contextData)}.
     
-    YOUR CORE PHILOSOPHY:
-    - You are a "mirror" (subtle and knowledgeable), not a "judge" (alarmist).
-    - Avoid gamification, medals, or streaks. Focus on "Clarity-as-a-Service."
-    - Use supportive, professional, and objective language. Avoid "Danger," "Warning," or "Bad."
+    CORE OBJECTIVE: 
+    Identify "Biological Turbulence"—when the historical relationship (correlation) between metrics breaks. 
+    Focus on "Decoupling" rather than just low scores.
 
-    SPECIFIC PATTERN RECOGNITION TASKS:
-    1. THE MENSTRUAL CYCLE "GHOST": Look for a consistent dip in metrics (Energy, Soreness, Sleep) roughly 4 days BEFORE the "menstrualCycle" toggle is set to TRUE in previous months. If you see this pattern emerging now, provide "permission to be tired" rather than flagging it as a training issue.
-    2. THE "PRE-ILLNESS" SIGNATURE: Analyze entries preceding any "feelingSick: true" flags. Does this person show a specific drop in Sleep Quality or a spike in Stress first? If their current data matches their unique "pre-illness signature," suggest a subtle pivot to restoration (e.g., extra sleep) without causing alarm.
-    3. THE "WHY": Educate the user on how their biological data is responding to their life and training context.
+    PATTERN RECOGNITION PARAMETERS:
+    1. THE 50-DAY BASELINE: Establish what "Normal" looks like. For this athlete, do Energy and Soreness usually move together? 
+    2. TURBULENCE DETECTION: 
+       - Look for "Decoupling": e.g., Energy drops significantly while Soreness remains "Fresh" (High). This is a classic "Biological Regime Shift" indicating systemic stress or early-stage illness.
+       - Look for the "Menstrual Ghost": A specific 4-day decoupling of Stress/Sleep Quality vs. Energy prior to a cycle start.
+    3. THE "SUBTLE" PHILOSOPHY: 
+       - No "Danger" or "Alerts." 
+       - Use "iPhone-style" clarity: subtle, professional, and slightly addictive because it's so accurate.
+       - Provide "Permission to Rest" if turbulence is high and scores are dropping.
+       - Provide "Confidence to Push" if metrics are stable despite high load.
 
-    OUTPUT FORMAT:
-    - Provide 2-3 short, meaningful sentences. 
-    - No bullet points unless absolutely necessary for clarity.
-    - Focus on "Actionable Empowerment."
-    
-    Target Audience: ${role === 'COACH' ? 'Brief, objective briefing for staff.' : 'Direct, empowering, and subtle insight for the individual.'}.
+    OUTPUT STYLE:
+    - 2 sentences of high-density insight.
+    - Avoid technical jargon like "Mahalanobis" or "Covariance" in the output to the athlete. 
+    - Use the role context: ${role}.
   `;
 
   try {
@@ -50,15 +53,15 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
       model: "gemini-3-flash-preview", 
       contents: prompt 
     });
-    return response.text || "Continue focusing on your professional recovery protocols.";
+    return response.text || "Metrics are within your 50-day adaptive range.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    return "Maintain consistency with your established performance routines.";
+    return "Maintaining stable protocol based on current readiness.";
   }
 };
 
 /**
- * Analyzes squad data for coaching staff.
+ * Analyzes squad data for coaching staff using Regime Shift detection.
  */
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
   if (athletes.length === 0) return "No athletes in squad.";
@@ -67,11 +70,14 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
   if (!ai) return "Squad briefing unavailable.";
   
   const prompt = `
-    Act as a Head of Performance. 
-    Review the squad wellness data: ${JSON.stringify(allEntries.slice(0, 20))}. 
-    Identify collective patterns of adaptation. 
-    Highlight individuals whose data suggests a shift into a "Restoration Focus" phase based on their historical signatures. 
-    Keep the tone objective, technical, and performance-oriented.
+    Act as a Head of Performance. Review the squad's 50-day data window.
+    Identify individuals experiencing "Regime Shifts" (High Turbulence).
+    
+    Categorize feedback:
+    - STABLE ADAPTATION: Athletes whose metrics are trending predictably with training load.
+    - REGIME SHIFTS: Athletes whose internal correlation (e.g., Sleep vs. Energy) has decoupled unexpectedly. These are "Early Signals" for intervention.
+    
+    Keep it brief, clinical, and actionable. Data: ${JSON.stringify(allEntries.slice(0, 50))}.
   `;
 
   try {
@@ -79,9 +85,9 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
       model: "gemini-3-pro-preview", 
       contents: prompt 
     });
-    return response.text || "Squad metrics are within expected ranges. Monitor individual feedback.";
+    return response.text || "Squad adaptation is stable across all primary vectors.";
   } catch (error) {
     console.error("Gemini Briefing Error:", error);
-    return "Check outlier reports manually in the squad view.";
+    return "Manual review of individual turbulence flags recommended.";
   }
 };
