@@ -10,34 +10,44 @@ export const storageService = {
   getCurrentUser: async (retryCount = 0): Promise<User | null> => {
     checkConfig();
     
-    const { data: { user: authUser }, error: authError } = await supabase!.auth.getUser();
-    if (authError || !authUser) return null;
+    try {
+      const { data: { session }, error: sessionError } = await supabase!.auth.getSession();
+      if (sessionError || !session?.user) return null;
 
-    // Fetch profile from our table
-    let { data: profile } = await supabase!
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
+      const authUser = session.user;
 
-    // If profile doesn't exist yet, it's likely the trigger is still running. Retry a few times.
-    if (!profile && retryCount < 5) {
-      console.log(`Profile not found for ${authUser.id}, retrying... (${retryCount + 1})`);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return storageService.getCurrentUser(retryCount + 1);
+      // Fetch profile from our table
+      let { data: profile, error: profileError } = await supabase!
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      // If profile doesn't exist yet, it's likely the trigger is still running. Retry a few times.
+      if (!profile && retryCount < 5) {
+        console.warn(`Profile not found for ${authUser.id}, retrying... (${retryCount + 1})`);
+        await new Promise(resolve => setTimeout(resolve, 800)); // Slightly longer delay for DB triggers
+        return storageService.getCurrentUser(retryCount + 1);
+      }
+
+      if (!profile) {
+        console.error("Profile fetch failed after retries for user:", authUser.id);
+        return null;
+      }
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        role: profile.role as UserRole,
+        coachId: profile.coach_id,
+        inviteCode: profile.invite_code
+      };
+    } catch (err) {
+      console.error("Critical storage error:", err);
+      return null;
     }
-
-    if (!profile) return null;
-
-    return {
-      id: profile.id,
-      email: profile.email,
-      firstName: profile.first_name || '',
-      lastName: profile.last_name || '',
-      role: profile.role as UserRole,
-      coachId: profile.coach_id,
-      inviteCode: profile.invite_code
-    };
   },
 
   signInWithSocial: async (provider: 'google' | 'apple') => {
@@ -105,9 +115,6 @@ export const storageService = {
     if (error) throw error;
     if (!data.user) throw new Error("Signup failed.");
 
-    // Note: If email verification is enabled, the user cannot sign in until they verify.
-    // The SQL trigger handles creating the 'PENDING' profile.
-
     return {
       id: data.user.id,
       email: data.user.email!,
@@ -122,9 +129,8 @@ export const storageService = {
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
     
-    // Fetch user immediately after sign-in
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed. Please ensure your account is verified.");
+    if (!user) throw new Error("Profile synchronization failed. Please check your internet connection.");
     return user;
   },
 
