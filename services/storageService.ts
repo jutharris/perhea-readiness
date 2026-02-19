@@ -7,17 +7,25 @@ const checkConfig = () => {
 };
 
 export const storageService = {
-  getCurrentUser: async (): Promise<User | null> => {
+  getCurrentUser: async (retryCount = 0): Promise<User | null> => {
     checkConfig();
     
     const { data: { user: authUser }, error: authError } = await supabase!.auth.getUser();
     if (authError || !authUser) return null;
 
+    // Fetch profile from our table
     let { data: profile } = await supabase!
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
       .single();
+
+    // If profile doesn't exist yet, it's likely the trigger is still running. Retry a few times.
+    if (!profile && retryCount < 5) {
+      console.log(`Profile not found for ${authUser.id}, retrying... (${retryCount + 1})`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return storageService.getCurrentUser(retryCount + 1);
+    }
 
     if (!profile) return null;
 
@@ -97,11 +105,8 @@ export const storageService = {
     if (error) throw error;
     if (!data.user) throw new Error("Signup failed.");
 
-    // Manually update the role if email signup (since trigger defaults to PENDING)
-    await supabase!
-      .from('profiles')
-      .update({ role: role, first_name: firstName, last_name: lastName })
-      .eq('id', data.user.id);
+    // Note: If email verification is enabled, the user cannot sign in until they verify.
+    // The SQL trigger handles creating the 'PENDING' profile.
 
     return {
       id: data.user.id,
@@ -116,8 +121,10 @@ export const storageService = {
     checkConfig();
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    
+    // Fetch user immediately after sign-in
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed.");
+    if (!user) throw new Error("Profile synchronization failed. Please ensure your account is verified.");
     return user;
   },
 
