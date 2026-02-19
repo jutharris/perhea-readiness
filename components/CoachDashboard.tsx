@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
 
@@ -18,6 +19,10 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
 
   return (
     <div className="space-y-8">
+      <div className="text-left mb-4">
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Welcome, {coach.firstName || 'Coach'}!</h1>
+      </div>
+
       <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-indigo-100 flex justify-between items-center">
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Your Squad Code</h3>
