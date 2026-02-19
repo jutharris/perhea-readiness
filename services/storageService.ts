@@ -12,46 +12,50 @@ export const storageService = {
     
     try {
       const { data: { session }, error: sessionError } = await supabase!.auth.getSession();
-      if (sessionError) {
-        console.error("Session Error:", sessionError);
-        return null;
-      }
+      if (sessionError) return null;
       if (!session?.user) return null;
 
       const authUser = session.user;
 
       // 1. Try to fetch existing profile
-      let { data: profile, error: profileError } = await supabase!
+      let { data: profile } = await supabase!
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
       // 2. Retry logic if profile is missing (waiting for DB trigger)
-      if (!profile && retryCount < 3) {
-        console.warn(`Profile missing for ${authUser.id}, retrying... (${retryCount + 1})`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!profile && retryCount < 2) {
+        await new Promise(resolve => setTimeout(resolve, 800));
         return storageService.getCurrentUser(retryCount + 1);
       }
 
-      // 3. SELF-HEALING: If profile is STILL missing, create it manually.
-      // This solves the "nothing entered into profiles" issue if the SQL trigger fails.
+      // 3. SELF-HEALING: If profile is STILL missing after retries, create it manually.
       if (!profile) {
-        console.info("Self-healing: Manually creating missing profile for", authUser.id);
+        console.info("Profile not found after trigger window. Manually initializing profile for", authUser.id);
+        
+        // Extract names from metadata
+        const metadata = authUser.user_metadata || {};
+        const fullName = metadata.full_name || metadata.name || '';
+        const nameParts = fullName.trim().split(/\s+/);
+        
+        const firstName = metadata.first_name || nameParts[0] || '';
+        const lastName = metadata.last_name || nameParts.slice(1).join(' ') || '';
+
         const { data: newProfile, error: createError } = await supabase!
           .from('profiles')
           .insert([{
             id: authUser.id,
-            email: authUser.email,
+            email: authUser.email || '',
             role: 'PENDING',
-            first_name: authUser.user_metadata?.first_name || authUser.user_metadata?.full_name?.split(' ')[0] || '',
-            last_name: authUser.user_metadata?.last_name || authUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || ''
+            first_name: firstName,
+            last_name: lastName
           }])
           .select()
           .single();
 
         if (createError) {
-          console.error("Self-healing failed:", createError);
+          console.error("Self-healing profile creation failed:", createError);
           return null;
         }
         profile = newProfile;
@@ -111,11 +115,28 @@ export const storageService = {
     const { data, error } = await supabase!.auth.signUp({
       email,
       password,
-      options: { data: { first_name: firstName, last_name: lastName, role: 'PENDING' } }
+      options: { 
+        data: { 
+          first_name: firstName, 
+          last_name: lastName,
+          role: 'PENDING' 
+        } 
+      }
     });
-    if (error) throw error;
+    
+    if (error) {
+      console.error("Supabase Auth Signup Error:", error);
+      throw error;
+    }
     if (!data.user) throw new Error("Signup failed.");
-    return { id: data.user.id, email: data.user.email!, firstName, lastName, role: 'PENDING' };
+
+    return { 
+      id: data.user.id, 
+      email: data.user.email!, 
+      firstName, 
+      lastName, 
+      role: 'PENDING' 
+    };
   },
 
   signIn: async (email: string, password: string): Promise<User> => {
@@ -123,7 +144,7 @@ export const storageService = {
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed.");
+    if (!user) throw new Error("Profile synchronization failed. If this is a new account, please check your email for a verification link.");
     return user;
   },
 
