@@ -18,20 +18,27 @@ export const storageService = {
       .eq('id', session.user.id)
       .single();
 
-    // Self-healing: If profile is missing OR role mismatch (Auth Meta says COACH but DB says ATHLETE)
     const meta = session.user.user_metadata;
     const metaRole = meta?.role;
+    const fullName = meta?.full_name || meta?.name || '';
+    
+    // Self-healing: Ensure DB profile matches Auth Metadata (Role & Names)
+    const needsFix = !profile || 
+                     (metaRole && profile.role !== metaRole) || 
+                     (!profile.first_name && fullName);
 
-    if (!profile || (metaRole === 'COACH' && profile.role === 'ATHLETE')) {
+    if (needsFix) {
+      const splitFirstName = meta?.first_name || fullName.split(' ')[0] || '';
+      const splitLastName = meta?.last_name || fullName.split(' ').slice(1).join(' ') || '';
+
       const upsertData: any = {
         id: session.user.id,
         email: session.user.email,
-        first_name: profile?.first_name || meta?.first_name || meta?.full_name?.split(' ')[0] || meta?.name?.split(' ')[0] || '',
-        last_name: profile?.last_name || meta?.last_name || meta?.full_name?.split(' ').slice(1).join(' ') || meta?.name?.split(' ').slice(1).join(' ') || '',
+        first_name: splitFirstName,
+        last_name: splitLastName,
         role: metaRole || profile?.role || 'ATHLETE'
       };
 
-      // Ensure coach gets an invite code if they don't have one
       if (upsertData.role === 'COACH' && !profile?.invite_code) {
         upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
       }
@@ -106,8 +113,6 @@ export const storageService = {
     checkConfig();
     const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
-
-    // Use the robust getCurrentUser logic to ensure profile is synced
     const user = await storageService.getCurrentUser();
     if (!user) throw new Error("Profile not found.");
     return user;
