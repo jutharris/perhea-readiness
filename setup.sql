@@ -1,6 +1,6 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.6)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.7)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -10,9 +10,9 @@ DROP FUNCTION IF EXISTS public.handle_new_user();
 -- 2. TABLE CREATION
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  email TEXT UNIQUE NOT NULL,
-  first_name TEXT,
-  last_name TEXT,
+  email TEXT NOT NULL,
+  first_name TEXT DEFAULT '',
+  last_name TEXT DEFAULT '',
   role TEXT CHECK (role IN ('ATHLETE', 'COACH', 'PENDING')) NOT NULL DEFAULT 'PENDING',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   invite_code TEXT UNIQUE,
@@ -64,7 +64,6 @@ EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
-
 CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
@@ -72,30 +71,19 @@ CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries 
 CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (auth.uid() = coach_id);
 
--- 4. AUTOMATION (SIGNUP TRIGGER)
+-- 4. AUTOMATION (FAIL-SAFE SIGNUP TRIGGER)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
-DECLARE
-  full_name_val TEXT;
-  name_parts TEXT[];
-  raw_meta JSONB;
 BEGIN
-  raw_meta := new.raw_user_meta_data;
-  full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name', '');
-  
-  -- Use regex to split full name robustly
-  name_parts := regexp_split_to_array(trim(full_name_val), '\s+');
-
-  INSERT INTO public.profiles (id, email, first_name, last_name, role)
-  VALUES (
-    new.id,
-    new.email,
-    COALESCE(raw_meta->>'first_name', name_parts[1]),
-    COALESCE(raw_meta->>'last_name', array_to_string(name_parts[2:], ' ')),
-    'PENDING' -- Everyone starts here to trigger onboarding selection
-  )
+  -- Basic fail-safe insert. Only uses fields guaranteed by auth.users.
+  -- We leave names and roles for the app to handle in onboarding.
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (new.id, new.email, 'PENDING')
   ON CONFLICT (id) DO NOTHING;
-    
+  RETURN new;
+EXCEPTION WHEN OTHERS THEN
+  -- Even if the trigger fails, don't crash the whole auth process.
+  -- The app has self-healing logic to create the profile if missing.
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
