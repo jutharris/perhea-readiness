@@ -22,20 +22,11 @@ const App: React.FC = () => {
   const [showInviteCard, setShowInviteCard] = useState(false);
   
   const [authMode, setAuthMode] = useState<'LANDING' | 'EMAIL_SIGNUP' | 'EMAIL_LOGIN'>('LANDING');
-  const [authRole, setAuthRole] = useState<UserRole>('ATHLETE');
   const [authForm, setAuthForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
   
   const [isBooting, setIsBooting] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-
-  // Safety timer
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isBooting) setIsBooting(false);
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [isBooting]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,26 +70,29 @@ const App: React.FC = () => {
     }
 
     try {
-      // Small delay for Supabase synchronization
-      await new Promise(r => setTimeout(r, 500));
+      const profile = await storageService.getProfile(session.user.id);
       
-      const currentUser = await storageService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        if (currentUser.role === 'PENDING') {
-          setActiveView('ONBOARDING');
-        } else {
-          setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-          refreshData(currentUser);
-          
-          const pending = localStorage.getItem('pending_join_code');
-          if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
-            setShowInviteCard(true);
-          }
+      if (profile) {
+        setUser(profile);
+        setActiveView(profile.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+        refreshData(profile);
+        
+        const pending = localStorage.getItem('pending_join_code');
+        if (pending && profile.role === 'ATHLETE' && !profile.coachId) {
+          setShowInviteCard(true);
         }
       } else {
-        setUser(null);
-        setActiveView('LOGIN');
+        // AUTHENTICATED BUT NO PROFILE: Route to onboarding
+        const metadata = session.user.user_metadata || {};
+        const partialUser: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          firstName: metadata.first_name || '',
+          lastName: metadata.last_name || '',
+          role: 'PENDING'
+        };
+        setUser(partialUser);
+        setActiveView('ONBOARDING');
       }
     } catch (err) {
       console.error("Auth Processing Error:", err);
@@ -133,7 +127,7 @@ const App: React.FC = () => {
     try {
       await storageService.joinSquadByCode(code, user.id);
       localStorage.removeItem('pending_join_code');
-      const updatedUser = await storageService.getCurrentUser();
+      const updatedUser = await storageService.getProfile(user.id);
       if (updatedUser) setUser(updatedUser);
       setShowInviteCard(false);
       setInviteCode(null);
@@ -159,17 +153,12 @@ const App: React.FC = () => {
     setActionLoading(true);
     try {
       if (authMode === 'EMAIL_SIGNUP') {
-        await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
+        await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName);
         alert("Success! Check your inbox to verify your email.");
         setAuthMode('EMAIL_LOGIN');
       } else {
-        const loggedUser = await storageService.signIn(authForm.email, authForm.password);
-        setUser(loggedUser);
-        if (loggedUser.role === 'PENDING') setActiveView('ONBOARDING');
-        else {
-          setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-          refreshData(loggedUser);
-        }
+        await storageService.signIn(authForm.email, authForm.password);
+        // handleAuthChange will trigger automatically via listener
       }
     } catch (err: any) {
       alert(err.message);
@@ -189,7 +178,6 @@ const App: React.FC = () => {
        <div className="flex flex-col items-center gap-6">
          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
          <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing Protocols...</p>
-         <button onClick={() => setIsBooting(false)} className="text-[10px] text-slate-300 font-bold uppercase tracking-tighter">Skip Loading</button>
        </div>
     </div>
   );
@@ -237,10 +225,10 @@ const App: React.FC = () => {
   return (
     <Layout activeView={activeView} setView={setActiveView} user={user} onLogout={handleLogout}>
       {activeView === 'ONBOARDING' && user && (
-        <Onboarding user={user} onComplete={async (updatedUser) => {
+        <Onboarding user={user} onComplete={(updatedUser) => {
           setUser(updatedUser);
           setActiveView(updatedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-          await refreshData(updatedUser);
+          refreshData(updatedUser);
         }} />
       )}
       {activeView === 'DASHBOARD' && user && (
