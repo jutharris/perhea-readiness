@@ -1,6 +1,6 @@
 
 -- =========================================================
--- MASTER SETUP: PerHea Athlete Readiness Platform (v2.5)
+-- MASTER SETUP: PerHea Athlete Readiness Platform (v2.6)
 -- =========================================================
 
 -- 1. CLEANUP
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT UNIQUE NOT NULL,
   first_name TEXT,
   last_name TEXT,
-  role TEXT CHECK (role IN ('ATHLETE', 'COACH')) NOT NULL DEFAULT 'ATHLETE',
+  role TEXT CHECK (role IN ('ATHLETE', 'COACH', 'PENDING')) NOT NULL DEFAULT 'PENDING',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   invite_code TEXT UNIQUE,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. SECURITY (RLS) - UPDATED FOR FRONTEND ENFORCEMENT
+-- 3. SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
@@ -62,7 +62,6 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
--- Critical Change: Allow ALL so the frontend can fix role/name discrepancies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
 
@@ -77,39 +76,25 @@ CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
-  new_invite_code TEXT := NULL;
-  user_role TEXT;
   full_name_val TEXT;
   name_parts TEXT[];
   raw_meta JSONB;
 BEGIN
   raw_meta := new.raw_user_meta_data;
-  -- Default to Athlete if metadata hasn't arrived yet (will be fixed by frontend sync)
-  user_role := COALESCE(raw_meta->>'role', 'ATHLETE');
   full_name_val := COALESCE(raw_meta->>'full_name', raw_meta->>'name', '');
   
   -- Use regex to split full name robustly
   name_parts := regexp_split_to_array(trim(full_name_val), '\s+');
 
-  -- Generate invite code only for coaches
-  IF (user_role = 'COACH') THEN
-    new_invite_code := upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6));
-  END IF;
-
-  INSERT INTO public.profiles (id, email, first_name, last_name, role, invite_code)
+  INSERT INTO public.profiles (id, email, first_name, last_name, role)
   VALUES (
     new.id,
     new.email,
     COALESCE(raw_meta->>'first_name', name_parts[1]),
     COALESCE(raw_meta->>'last_name', array_to_string(name_parts[2:], ' ')),
-    user_role,
-    new_invite_code
+    'PENDING' -- Everyone starts here to trigger onboarding selection
   )
-  ON CONFLICT (id) DO UPDATE SET
-    first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    role = EXCLUDED.role,
-    invite_code = COALESCE(profiles.invite_code, EXCLUDED.invite_code);
+  ON CONFLICT (id) DO NOTHING;
     
   RETURN new;
 END;
