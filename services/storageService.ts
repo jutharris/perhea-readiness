@@ -12,10 +12,11 @@ export const storageService = {
   getCurrentUser: async (): Promise<User | null> => {
     checkConfig();
     
-    // Use getUser() instead of getSession() to ensure we have the latest server-side metadata
+    // 1. Get the current Auth user (fresh from server)
     const { data: { user: authUser }, error: authError } = await supabase!.auth.getUser();
     if (authError || !authUser) return null;
 
+    // 2. Fetch the existing DB profile
     let { data: profile } = await supabase!
       .from('profiles')
       .select('*')
@@ -23,41 +24,53 @@ export const storageService = {
       .single();
 
     const meta = authUser.user_metadata;
-    const intendedRole = (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole) || meta?.role;
+    // Look for our fallback intended role in localStorage
+    const storedRole = localStorage.getItem(OAUTH_ROLE_KEY) as UserRole | null;
+    const intendedRole = storedRole || (meta?.role as UserRole);
     const fullName = meta?.full_name || meta?.name || '';
     
-    // Aggressive Correction:
-    // We detect if the DB profile is out of sync with what the user intended or what Auth says.
-    const roleMismatch = intendedRole && profile && profile.role !== intendedRole;
-    const nameMissing = profile && (!profile.first_name || profile.first_name === fullName);
+    // 3. Check for discrepancies (Race condition check)
+    // Discrepancy if: profile doesn't exist, role is wrong, or names aren't split
+    const needsCorrection = !profile || 
+                            (intendedRole && profile.role !== intendedRole) || 
+                            (!profile.first_name && fullName);
 
-    if (!profile || roleMismatch || nameMissing) {
-      // Split "Justin Harris" into ["Justin", "Harris"]
+    if (needsCorrection) {
+      console.log("Synchronizing profile: ", { intendedRole, currentProfile: profile?.role });
+      
       const nameParts = fullName.trim().split(/\s+/);
-      const splitFirstName = meta?.first_name || nameParts[0] || '';
-      const splitLastName = meta?.last_name || nameParts.slice(1).join(' ') || '';
+      const firstName = meta?.first_name || nameParts[0] || '';
+      const lastName = meta?.last_name || nameParts.slice(1).join(' ') || '';
 
       const upsertData: any = {
         id: authUser.id,
         email: authUser.email,
-        first_name: splitFirstName,
-        last_name: splitLastName,
+        first_name: firstName,
+        last_name: lastName,
         role: intendedRole || profile?.role || 'ATHLETE'
       };
 
-      if (upsertData.role === 'COACH' && !profile?.invite_code) {
+      // Ensure coach gets an invite code if missing
+      if (upsertData.role === 'COACH' && (!profile || !profile.invite_code)) {
         upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
       }
 
-      const { data: refreshedProfile } = await supabase!
+      // Explicitly UPSERT and wait for results
+      const { error: syncError } = await supabase!
         .from('profiles')
-        .upsert(upsertData, { onConflict: 'id' })
-        .select()
-        .single();
+        .upsert(upsertData, { onConflict: 'id' });
       
-      if (refreshedProfile) {
-        profile = refreshedProfile;
+      if (!syncError) {
+        // Clear intent tracker and re-fetch the fresh, corrected profile
         localStorage.removeItem(OAUTH_ROLE_KEY);
+        const { data: freshProfile } = await supabase!
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+        profile = freshProfile;
+      } else {
+        console.error("Profile sync failed:", syncError);
       }
     }
 
@@ -76,7 +89,7 @@ export const storageService = {
 
   signInWithSocial: async (provider: 'google' | 'apple', role: UserRole) => {
     checkConfig();
-    // Persist the role selection to survive the OAuth redirect
+    // We set this BEFORE the redirect so we know what the user wanted when they come back
     localStorage.setItem(OAUTH_ROLE_KEY, role);
     
     const { error } = await supabase!.auth.signInWithOAuth({
@@ -88,7 +101,7 @@ export const storageService = {
           prompt: 'select_account'
         },
         data: {
-          role: role
+          role: role // Attempting to pass role metadata
         }
       }
     });
@@ -126,7 +139,7 @@ export const storageService = {
     const { error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
     const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed.");
+    if (!user) throw new Error("Synchronization failed.");
     return user;
   },
 
