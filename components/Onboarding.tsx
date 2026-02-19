@@ -69,8 +69,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
           </div>
-          <h3 className={`text-lg font-black mb-2 tracking-tight ${selectedRole === 'COACH' ? 'text-white' : 'text-slate-900'}`}>Coach</h3>
-          <p className={`text-xs font-medium leading-relaxed ${selectedRole === 'COACH' ? 'text-slate-400' : 'text-slate-400'}`}>Manage athletes, monitor intervention flags, and issue remote performance protocols.</p>
+          <h3 className={`text-lg font-black mb-2 tracking-tight ${selectedRole === 'COACH' ? 'text-white' : 'text-slate-900'}`}>COACH</h3>
+          <p className={`text-xs font-medium leading-relaxed ${selectedRole === 'COACH' ? 'text-slate-400' : 'text-slate-400'}`}>Manage, monitor, and facilitate performance protocols.</p>
           {selectedRole === 'COACH' && <div className="absolute top-6 right-6 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center text-white text-[10px] font-black">OK</div>}
         </button>
       </div>
