@@ -7,98 +7,56 @@ const checkConfig = () => {
 };
 
 export const storageService = {
-  getCurrentUser: async (retryCount = 0): Promise<User | null> => {
+  // Purely fetches the profile from DB
+  getProfile: async (userId: string): Promise<User | null> => {
     checkConfig();
-    
     try {
-      const { data: { session }, error: sessionError } = await supabase!.auth.getSession();
-      if (sessionError) return null;
-      if (!session?.user) return null;
-
-      const authUser = session.user;
-
-      // 1. Try to fetch existing profile
-      let { data: profile } = await supabase!
+      const { data, error } = await supabase!
         .from('profiles')
         .select('*')
-        .eq('id', authUser.id)
+        .eq('id', userId)
         .single();
 
-      // 2. Retry logic if profile is missing (waiting for DB trigger)
-      if (!profile && retryCount < 2) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return storageService.getCurrentUser(retryCount + 1);
-      }
-
-      // 3. SELF-HEALING: If profile is STILL missing after retries, create it manually.
-      if (!profile) {
-        console.info("Profile not found after trigger window. Manually initializing profile for", authUser.id);
-        
-        // Extract names from metadata
-        const metadata = authUser.user_metadata || {};
-        const fullName = metadata.full_name || metadata.name || '';
-        const nameParts = fullName.trim().split(/\s+/);
-        
-        const firstName = metadata.first_name || nameParts[0] || '';
-        const lastName = metadata.last_name || nameParts.slice(1).join(' ') || '';
-
-        const { data: newProfile, error: createError } = await supabase!
-          .from('profiles')
-          .insert([{
-            id: authUser.id,
-            email: authUser.email || '',
-            role: 'PENDING',
-            first_name: firstName,
-            last_name: lastName
-          }])
-          .select()
-          .single();
-
-        if (createError) {
-          console.error("Self-healing profile creation failed:", createError);
-          return null;
-        }
-        profile = newProfile;
-      }
+      if (error || !data) return null;
 
       return {
-        id: profile.id,
-        email: profile.email,
-        firstName: profile.first_name || '',
-        lastName: profile.last_name || '',
-        role: profile.role as UserRole,
-        coachId: profile.coach_id,
-        inviteCode: profile.invite_code
+        id: data.id,
+        email: data.email,
+        firstName: data.first_name || '',
+        lastName: data.last_name || '',
+        role: data.role as UserRole,
+        coachId: data.coach_id,
+        inviteCode: data.invite_code
       };
     } catch (err) {
-      console.error("Critical storage error:", err);
       return null;
     }
   },
 
-  signInWithSocial: async (provider: 'google' | 'apple') => {
+  // First-time record creation in public.profiles
+  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
     checkConfig();
-    const { error } = await supabase!.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account'
-        }
-      }
-    });
-    if (error) throw error;
-  },
+    
+    const insertData: any = {
+      id: userId,
+      email: email,
+      first_name: firstName,
+      last_name: lastName,
+      role: role
+    };
 
-  completeOnboarding: async (userId: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
-    checkConfig();
-    const updateData: any = { first_name: firstName, last_name: lastName, role: role };
     if (role === 'COACH') {
-      updateData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      insertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     }
-    const { data, error } = await supabase!.from('profiles').update(updateData).eq('id', userId).select().single();
+
+    const { data, error } = await supabase!
+      .from('profiles')
+      .upsert(insertData)
+      .select()
+      .single();
+
     if (error) throw error;
+    
     return {
       id: data.id,
       email: data.email,
@@ -110,42 +68,36 @@ export const storageService = {
     };
   },
 
-  signUp: async (email: string, password: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
+  signInWithSocial: async (provider: 'google' | 'apple') => {
+    checkConfig();
+    const { error } = await supabase!.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { access_type: 'offline', prompt: 'select_account' }
+      }
+    });
+    if (error) throw error;
+  },
+
+  signUp: async (email: string, password: string, firstName: string, lastName: string) => {
     checkConfig();
     const { data, error } = await supabase!.auth.signUp({
       email,
       password,
       options: { 
-        data: { 
-          first_name: firstName, 
-          last_name: lastName,
-          role: 'PENDING' 
-        } 
+        data: { first_name: firstName, last_name: lastName } 
       }
     });
-    
-    if (error) {
-      console.error("Supabase Auth Signup Error:", error);
-      throw error;
-    }
-    if (!data.user) throw new Error("Signup failed.");
-
-    return { 
-      id: data.user.id, 
-      email: data.user.email!, 
-      firstName, 
-      lastName, 
-      role: 'PENDING' 
-    };
+    if (error) throw error;
+    return data;
   },
 
-  signIn: async (email: string, password: string): Promise<User> => {
+  signIn: async (email: string, password: string) => {
     checkConfig();
-    const { error } = await supabase!.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase!.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    const user = await storageService.getCurrentUser();
-    if (!user) throw new Error("Profile synchronization failed. If this is a new account, please check your email for a verification link.");
-    return user;
+    return data.user;
   },
 
   joinSquadByCode: async (code: string, athleteId: string) => {
