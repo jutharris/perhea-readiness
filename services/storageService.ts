@@ -6,6 +6,8 @@ const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
 };
 
+const OAUTH_ROLE_KEY = 'perhea_intended_role';
+
 export const storageService = {
   getCurrentUser: async (): Promise<User | null> => {
     checkConfig();
@@ -19,37 +21,48 @@ export const storageService = {
       .single();
 
     const meta = session.user.user_metadata;
-    const metaRole = meta?.role;
+    // Check localStorage for a role selection that might have been lost in OAuth redirect
+    const intendedRole = (localStorage.getItem(OAUTH_ROLE_KEY) as UserRole) || meta?.role;
     const fullName = meta?.full_name || meta?.name || '';
     
-    // Self-healing: Ensure DB profile matches Auth Metadata (Role & Names)
+    // Self-healing: 
+    // 1. If profile doesn't exist
+    // 2. If profile exists but role is wrong (e.g., DB defaulted to ATHLETE but user chose COACH)
+    // 3. If names are missing
     const needsFix = !profile || 
-                     (metaRole && profile.role !== metaRole) || 
+                     (intendedRole && profile.role !== intendedRole) || 
                      (!profile.first_name && fullName);
 
     if (needsFix) {
-      const splitFirstName = meta?.first_name || fullName.split(' ')[0] || '';
-      const splitLastName = meta?.last_name || fullName.split(' ').slice(1).join(' ') || '';
+      // Robust name splitting: "Justin Harris" -> ["Justin", "Harris"]
+      const nameParts = fullName.trim().split(/\s+/);
+      const splitFirstName = meta?.first_name || nameParts[0] || '';
+      const splitLastName = meta?.last_name || nameParts.slice(1).join(' ') || '';
 
       const upsertData: any = {
         id: session.user.id,
         email: session.user.email,
         first_name: splitFirstName,
         last_name: splitLastName,
-        role: metaRole || profile?.role || 'ATHLETE'
+        role: intendedRole || profile?.role || 'ATHLETE'
       };
 
+      // Ensure coach gets an invite code
       if (upsertData.role === 'COACH' && !profile?.invite_code) {
         upsertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
       }
 
-      const { data: refreshedProfile } = await supabase!
+      const { data: refreshedProfile, error: upsertError } = await supabase!
         .from('profiles')
         .upsert(upsertData, { onConflict: 'id' })
         .select()
         .single();
       
-      if (refreshedProfile) profile = refreshedProfile;
+      if (refreshedProfile) {
+        profile = refreshedProfile;
+        // Clean up the intent tracker once successfully synced
+        localStorage.removeItem(OAUTH_ROLE_KEY);
+      }
     }
 
     if (!profile) return null;
@@ -59,7 +72,7 @@ export const storageService = {
       email: profile.email,
       firstName: profile.first_name || '',
       lastName: profile.last_name || '',
-      role: profile.role,
+      role: profile.role as UserRole,
       coachId: profile.coach_id,
       inviteCode: profile.invite_code
     };
@@ -67,6 +80,10 @@ export const storageService = {
 
   signInWithSocial: async (provider: 'google' | 'apple', role: UserRole) => {
     checkConfig();
+    // CRITICAL: Save the role to localStorage because OAuth redirects 
+    // often strip custom metadata from the initial session creation.
+    localStorage.setItem(OAUTH_ROLE_KEY, role);
+    
     const { error } = await supabase!.auth.signInWithOAuth({
       provider,
       options: {
@@ -76,7 +93,7 @@ export const storageService = {
           prompt: 'select_account'
         },
         data: {
-          role: role
+          role: role // We still send it, but localStorage is our safety net
         }
       }
     });
@@ -138,6 +155,7 @@ export const storageService = {
 
   logout: async () => {
     checkConfig();
+    localStorage.removeItem(OAUTH_ROLE_KEY);
     await supabase!.auth.signOut();
   },
 
@@ -191,7 +209,7 @@ export const storageService = {
       email: d.email, 
       firstName: d.first_name, 
       lastName: d.last_name, 
-      role: d.role, 
+      role: d.role as UserRole, 
       coachId: d.coach_id 
     }));
   },
