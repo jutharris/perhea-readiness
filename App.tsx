@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import Insights from './components/Insights';
 import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
+import Onboarding from './components/Onboarding';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
@@ -49,7 +50,7 @@ const App: React.FC = () => {
         ]);
         setAllEntries(entriesData);
         setCoachedAthletes(coachedData);
-      } else {
+      } else if (currentUser.role === 'ATHLETE') {
         const userData = await storageService.getEntriesForUser(currentUser.id);
         setEntries(userData);
       }
@@ -70,13 +71,18 @@ const App: React.FC = () => {
         const currentUser = await storageService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
-          setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-          await refreshData(currentUser);
           
-          // Check for pending join handshake
-          const pending = localStorage.getItem('pending_join_code');
-          if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
-            setShowInviteCard(true);
+          if (currentUser.role === 'PENDING') {
+            setActiveView('ONBOARDING');
+          } else {
+            setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+            await refreshData(currentUser);
+            
+            // Check for pending join handshake
+            const pending = localStorage.getItem('pending_join_code');
+            if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
+              setShowInviteCard(true);
+            }
           }
         }
       } catch (err: any) {
@@ -111,7 +117,7 @@ const App: React.FC = () => {
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
-      await storageService.signInWithSocial(provider, authRole);
+      await storageService.signInWithSocial(provider);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -132,9 +138,14 @@ const App: React.FC = () => {
       } else {
         loggedUser = await storageService.signIn(authForm.email, authForm.password);
       }
+      
       setUser(loggedUser);
-      setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-      await refreshData(loggedUser);
+      if (loggedUser.role === 'PENDING') {
+        setActiveView('ONBOARDING');
+      } else {
+        setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+        await refreshData(loggedUser);
+      }
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -160,58 +171,70 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center px-6 pt-24 pb-12 overflow-y-auto">
         <div className="w-full max-w-[400px] text-center space-y-4">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Performance-Driven<br/>Readiness</h1>
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100 mb-6">P</div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Elite Performance Monitor</h1>
           <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">
-            Track your progress and optimize your training. Join the elite community for free.
+            The intelligent readiness protocol for athletes and coaches.
           </p>
           
           <div className="pt-10 space-y-3">
-            <div className="text-xs font-black text-slate-400 uppercase tracking-widest pb-2">I am an:</div>
-            <div className="flex bg-slate-50 p-1.5 rounded-2xl mb-8">
-              {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
-                <button 
-                  key={r} 
-                  onClick={() => setAuthRole(r)} 
-                  className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${authRole === r ? 'bg-white text-indigo-600 shadow-lg shadow-indigo-100/50' : 'text-slate-400'}`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            <button onClick={() => handleSocialAuth('google')} className="w-full py-4 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors">
+            <button onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm">
               <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Sign In With Google
+              Continue With Google
             </button>
 
+            <div className="flex items-center gap-4 py-4">
+              <div className="flex-1 h-px bg-slate-100"></div>
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">or email</span>
+              <div className="flex-1 h-px bg-slate-100"></div>
+            </div>
+
             {authMode === 'LANDING' ? (
-              <button onClick={() => setAuthMode('EMAIL_SIGNUP')} className="w-full py-4 px-6 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-100 hover:bg-black active:scale-[0.98] transition-all">
-                Sign Up With Email
+              <button onClick={() => setAuthMode('EMAIL_LOGIN')} className="w-full py-5 px-6 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-100 hover:bg-black active:scale-[0.98] transition-all">
+                Login with Password
               </button>
             ) : (
-              <form onSubmit={handleEmailAuth} className="space-y-4 pt-4 text-left">
+              <form onSubmit={handleEmailAuth} className="space-y-4 pt-2 text-left animate-in slide-in-from-top-2 duration-300">
                 {authMode === 'EMAIL_SIGNUP' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="First Name" required value={authForm.firstName} onChange={e => setAuthForm({...authForm, firstName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
-                    <input type="text" placeholder="Last Name" required value={authForm.lastName} onChange={e => setAuthForm({...authForm, lastName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
-                  </div>
+                  <>
+                    <div className="grid bg-slate-50 p-1.5 rounded-2xl mb-4">
+                      <div className="flex">
+                        {(['ATHLETE', 'COACH'] as UserRole[]).map(r => (
+                          <button 
+                            key={r} 
+                            type="button"
+                            onClick={() => setAuthRole(r)} 
+                            className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${authRole === r ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <input type="text" placeholder="First Name" required value={authForm.firstName} onChange={e => setAuthForm({...authForm, firstName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
+                      <input type="text" placeholder="Last Name" required value={authForm.lastName} onChange={e => setAuthForm({...authForm, lastName: e.target.value})} className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
+                    </div>
+                  </>
                 )}
                 <input type="email" placeholder="Email Address" required value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
                 <input type="password" placeholder="Password" required value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
                 <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100">
                   {loading ? 'PROCESSING...' : (authMode === 'EMAIL_SIGNUP' ? 'Create Account' : 'Log In')}
                 </button>
-                <button type="button" onClick={() => setAuthMode('LANDING')} className="w-full text-xs font-black text-slate-400 uppercase tracking-widest pt-2">Back</button>
+                <button type="button" onClick={() => setAuthMode('LANDING')} className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest pt-2">Cancel</button>
               </form>
             )}
 
-            <div className="pt-12 text-sm text-slate-500 font-medium">
-              Already a Member? <button onClick={() => setAuthMode('EMAIL_LOGIN')} className="text-indigo-600 font-bold hover:underline">Log In</button>
+            <div className="pt-8 text-sm text-slate-500 font-medium">
+              {authMode === 'EMAIL_SIGNUP' ? "Already a Member?" : "New to the platform?"} {' '}
+              <button 
+                onClick={() => setAuthMode(authMode === 'EMAIL_SIGNUP' ? 'EMAIL_LOGIN' : 'EMAIL_SIGNUP')} 
+                className="text-indigo-600 font-bold hover:underline"
+              >
+                {authMode === 'EMAIL_SIGNUP' ? 'Log In' : 'Join Now'}
+              </button>
             </div>
-            
-            <p className="text-[10px] text-slate-400 px-8 pt-10 leading-relaxed font-bold uppercase tracking-widest">
-              By continuing, you agree to our <span className="text-indigo-600">Terms</span> and <span className="text-indigo-600">Privacy</span>.
-            </p>
           </div>
         </div>
       </div>
@@ -220,6 +243,14 @@ const App: React.FC = () => {
 
   return (
     <Layout activeView={activeView} setView={setActiveView} user={user} onLogout={handleLogout}>
+      {activeView === 'ONBOARDING' && user && (
+        <Onboarding user={user} onComplete={async (updatedUser) => {
+          setUser(updatedUser);
+          setActiveView(updatedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          await refreshData(updatedUser);
+        }} />
+      )}
+
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {showInviteCard && inviteCode && (
