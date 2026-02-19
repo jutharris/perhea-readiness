@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
 import Dashboard from './components/Dashboard';
@@ -24,8 +24,10 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<'LANDING' | 'EMAIL_SIGNUP' | 'EMAIL_LOGIN'>('LANDING');
   const [authRole, setAuthRole] = useState<UserRole>('ATHLETE');
   const [authForm, setAuthForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
-  const [loading, setLoading] = useState(false);
-  const [initChecked, setInitChecked] = useState(false);
+  
+  const [isBooting, setIsBooting] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Persistence of Join Code from URL
   useEffect(() => {
@@ -39,9 +41,9 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const refreshData = async (currentUser: User) => {
+  const refreshData = useCallback(async (currentUser: User) => {
     if (!isSupabaseConfigured()) return;
-    setLoading(true);
+    setIsRefreshing(true);
     try {
       if (currentUser.role === 'COACH') {
         const [entriesData, coachedData] = await Promise.all([
@@ -55,68 +57,80 @@ const App: React.FC = () => {
         setEntries(userData);
       }
     } catch (err) {
-      console.error("Refresh Error:", err);
+      console.error("Data Refresh Error:", err);
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, []);
 
-  // MAIN AUTH LISTENER: Replaces the one-time useEffect check
-  useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setInitChecked(true);
+  const handleAuthUpdate = useCallback(async (sessionUser: any) => {
+    if (!sessionUser) {
+      setUser(null);
+      setActiveView('LOGIN');
+      setIsBooting(false);
       return;
     }
 
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Auth Event: ${event}`);
-      
-      if (session?.user) {
-        setLoading(true);
-        try {
-          // Get the full profile from our DB
-          const currentUser = await storageService.getCurrentUser();
-          if (currentUser) {
-            setUser(currentUser);
-            
-            // Route based on role
-            if (currentUser.role === 'PENDING') {
-              setActiveView('ONBOARDING');
-            } else {
-              // Only refresh if we aren't already on a specific view (prevents jumping)
-              if (activeView === 'LOGIN' || activeView === 'ONBOARDING') {
-                setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
-              }
-              await refreshData(currentUser);
-              
-              const pending = localStorage.getItem('pending_join_code');
-              if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
-                setShowInviteCard(true);
-              }
-            }
+    try {
+      const currentUser = await storageService.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        if (currentUser.role === 'PENDING') {
+          setActiveView('ONBOARDING');
+        } else {
+          setActiveView(currentUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          // Background refresh - don't block booting
+          refreshData(currentUser);
+          
+          const pending = localStorage.getItem('pending_join_code');
+          if (pending && currentUser.role === 'ATHLETE' && !currentUser.coachId) {
+            setShowInviteCard(true);
           }
-        } catch (err) {
-          console.error("Profile Fetch Error:", err);
-        } finally {
-          setLoading(false);
-          setInitChecked(true);
         }
       } else {
-        // Logged out
+        // Logged in but no profile found - retry or logout?
         setUser(null);
         setActiveView('LOGIN');
-        setInitChecked(true);
+      }
+    } catch (err) {
+      console.error("Auth Handshake Error:", err);
+    } finally {
+      setIsBooting(false);
+    }
+  }, [refreshData]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setIsBooting(false);
+      return;
+    }
+
+    // 1. Initial manual session check
+    supabase!.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleAuthUpdate(session.user);
+      else setIsBooting(false);
+    });
+
+    // 2. Real-time listener for OAuth returns and sign-outs
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+      console.log(`Supabase Event: ${event}`);
+      if (event === 'SIGNED_IN') {
+        handleAuthUpdate(session?.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setActiveView('LOGIN');
+        setIsBooting(false);
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [handleAuthUpdate]);
 
   const handleJoinSquad = async (code: string) => {
     if (!user) return;
-    setLoading(true);
+    setActionLoading(true);
     try {
       await storageService.joinSquadByCode(code, user.id);
       localStorage.removeItem('pending_join_code');
@@ -130,56 +144,60 @@ const App: React.FC = () => {
       localStorage.removeItem('pending_join_code');
       setShowInviteCard(false);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
-      setLoading(true);
+      setActionLoading(true);
       await storageService.signInWithSocial(provider);
-      // redirect happens here, listener will pick it up on return
     } catch (err: any) {
       alert(err.message);
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setActionLoading(true);
     try {
       if (authMode === 'EMAIL_SIGNUP') {
         await storageService.signUp(authForm.email, authForm.password, authForm.firstName, authForm.lastName, authRole);
-        alert("Success! Please check your email inbox to verify your account.");
+        alert("Verification email sent! Please check your inbox.");
         setAuthMode('EMAIL_LOGIN');
       } else {
         const loggedUser = await storageService.signIn(authForm.email, authForm.password);
-        // The listener above will handle state updates, but we can set user here for immediate feedback if needed
         setUser(loggedUser);
+        if (loggedUser.role === 'PENDING') setActiveView('ONBOARDING');
+        else {
+          setActiveView(loggedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          refreshData(loggedUser);
+        }
       }
     } catch (err: any) {
       alert(err.message);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    setLoading(true);
+    setActionLoading(true);
     await storageService.logout();
     setUser(null);
     setActiveView('LOGIN');
     setEntries([]);
     setAuthMode('LANDING');
-    setLoading(false);
+    setActionLoading(false);
   };
 
-  if (!initChecked || loading) return (
+  // Full-screen Booting Screen
+  if (isBooting) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
        <div className="flex flex-col items-center gap-6">
          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-         <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing Arena...</p>
+         <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Initializing Arena...</p>
        </div>
     </div>
   );
@@ -195,9 +213,9 @@ const App: React.FC = () => {
           </p>
           
           <div className="pt-10 space-y-3">
-            <button onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm">
+            <button disabled={actionLoading} onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
               <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Continue With Google
+              {actionLoading ? 'CONNECTING...' : 'Continue With Google'}
             </button>
 
             <div className="flex items-center gap-4 py-4">
@@ -222,8 +240,8 @@ const App: React.FC = () => {
                 )}
                 <input type="email" placeholder="Email Address" required value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
                 <input type="password" placeholder="Password" required value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50" />
-                <button type="submit" disabled={loading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100">
-                  {loading ? 'PROCESSING...' : (authMode === 'EMAIL_SIGNUP' ? 'Create Account' : 'Log In')}
+                <button type="submit" disabled={actionLoading} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100">
+                  {actionLoading ? 'PROCESSING...' : (authMode === 'EMAIL_SIGNUP' ? 'Create Account' : 'Log In')}
                 </button>
                 <button type="button" onClick={() => setAuthMode('LANDING')} className="w-full text-[10px] font-black text-slate-400 uppercase tracking-widest pt-2">Cancel</button>
               </form>
@@ -256,6 +274,13 @@ const App: React.FC = () => {
 
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {isRefreshing && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full w-fit mx-auto border border-indigo-100">
+              <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Refreshing Data...</span>
+            </div>
+          )}
+
           {showInviteCard && inviteCode && (
             <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 space-y-4">
               <h3 className="text-xl font-black">Join Your Squad?</h3>
