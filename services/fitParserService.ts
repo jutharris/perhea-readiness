@@ -43,7 +43,6 @@ export const fitParserService = {
         try {
           let arrayBuffer = e.target?.result as ArrayBuffer;
           
-          // Handle .gz
           if (file.name.toLowerCase().endsWith('.gz')) {
             const uint8Array = new Uint8Array(arrayBuffer);
             arrayBuffer = pako.ungzip(uint8Array).buffer;
