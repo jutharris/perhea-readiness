@@ -6,7 +6,6 @@ const checkConfig = () => {
 };
 
 export const storageService = {
-  // Purely fetches the profile from DB
   getProfile: async (userId: string): Promise<User | null> => {
     checkConfig();
     try {
@@ -25,15 +24,15 @@ export const storageService = {
         lastName: data.last_name || '',
         role: data.role as UserRole,
         coachId: data.coach_id,
-        inviteCode: data.invite_code
+        inviteCode: data.invite_code,
+        birthDate: data.birth_date
       };
     } catch (err) {
       return null;
     }
   },
 
-  // First-time record creation in public.profiles
-  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole): Promise<User> => {
+  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string): Promise<User> => {
     checkConfig();
     
     const insertData: any = {
@@ -41,7 +40,8 @@ export const storageService = {
       email: email,
       first_name: firstName,
       last_name: lastName,
-      role: role
+      role: role,
+      birth_date: birthDate
     };
 
     if (role === 'COACH') {
@@ -63,7 +63,8 @@ export const storageService = {
       lastName: data.last_name,
       role: data.role as UserRole,
       inviteCode: data.invite_code,
-      coachId: data.coach_id
+      coachId: data.coach_id,
+      birthDate: data.birth_date
     };
   },
 
@@ -117,16 +118,16 @@ export const storageService = {
     const { error } = await supabase!.from('wellness_entries').insert([{
       user_id: entryData.userId,
       session_type: entryData.sessionType,
-      last_session_rpe: entryData.lastSessionRPE,
+      last_session_rpe: entryData.last_session_rpe,
       energy: entryData.energy,
       soreness: entryData.soreness,
-      sleep_hours: entryData.sleepHours,
-      sleep_quality: entryData.sleepQuality,
+      sleep_hours: entryData.sleep_hours,
+      sleep_quality: entryData.sleep_quality,
       stress: entryData.stress,
       social: entryData.social,
-      feeling_sick: entryData.feelingSick,
+      feeling_sick: entryData.feeling_sick,
       injured: entryData.injured,
-      menstrual_cycle: entryData.menstrualCycle,
+      menstrual_cycle: entryData.menstrual_cycle,
       comments: entryData.comments
     }]);
     if (error) throw error;
@@ -158,7 +159,7 @@ export const storageService = {
     checkConfig();
     const { data } = await supabase!.from('profiles').select('*').eq('role', 'ATHLETE').eq('coach_id', coachId);
     return (data || []).map(d => ({ 
-      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id 
+      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id, birthDate: d.birth_date 
     }));
   },
 
