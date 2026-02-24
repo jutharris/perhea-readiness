@@ -11,6 +11,7 @@ export interface User {
   role: UserRole;
   coachId?: string;
   inviteCode?: string;
+  birthDate?: string;
 }
 
 export interface WellnessEntry {
