@@ -46,6 +46,6 @@ export interface SubmaxTest {
   elapsedStartSec: number;
   elapsedEndSec: number;
   summary: any;
-  data: any; // Stores the 'miles' or 'segments' array
+  data: any; 
   createdAt: string;
 }
