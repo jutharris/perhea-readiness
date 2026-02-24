@@ -1,4 +1,3 @@
-
 -- =========================================================
 -- MASTER SETUP: PerHea Athlete Readiness Platform (v3.0)
 -- =========================================================
@@ -48,8 +47,6 @@ CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- [Previous tables: profiles, wellness_entries, coach_adjustments]
-
 CREATE TABLE IF NOT EXISTS public.submax_tests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -66,12 +63,11 @@ CREATE TABLE IF NOT EXISTS public.submax_tests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
-
 -- 3. SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
@@ -80,6 +76,8 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Coaches can view their squad entries" ON public.wellness_entries;
     DROP POLICY IF EXISTS "Athletes view received adjustments" ON public.coach_adjustments;
     DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
+    DROP POLICY IF EXISTS "Athletes manage own tests" ON public.submax_tests;
+    DROP POLICY IF EXISTS "Coaches view squad tests" ON public.submax_tests;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 -- Policies
@@ -91,3 +89,7 @@ CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries 
 );
 CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (auth.uid() = coach_id);
+CREATE POLICY "Athletes manage own tests" ON public.submax_tests FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Coaches view squad tests" ON public.submax_tests FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.submax_tests.user_id AND p.coach_id = auth.uid())
+);
