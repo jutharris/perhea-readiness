@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { fitParserService } from '../services/fitParserService';
 import { storageService } from '../services/storageService';
 import { User } from '../types';
@@ -11,10 +11,25 @@ interface Props {
 
 const SubmaxTestUpload: React.FC<Props> = ({ user, onComplete, onCancel }) => {
   const [mode, setMode] = useState<'bike' | 'run'>('bike');
-  const [targetHr, setTargetHr] = useState<number>(180 - 30); // Default for 30yo
+  const [targetHr, setTargetHr] = useState<number>(150);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-calculate Target HR based on age and mode
+  useEffect(() => {
+    if (user.birthDate) {
+      const birth = new Date(user.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      // Protocol: 180 - Age for Run, 170 - Age for Bike
+      setTargetHr(mode === 'run' ? 180 - age : 170 - age);
+    }
+  }, [user.birthDate, mode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -88,7 +103,20 @@ const SubmaxTestUpload: React.FC<Props> = ({ user, onComplete, onCancel }) => {
               type="number" 
               value={targetHr} 
               onChange={e => setTargetHr(Number(e.target.value))}
-              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold"
+              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all"
+            />
+            <p className="text-[10px] text-slate-400 italic">Protocol: 170 - Age. Stable for 60s to start.</p>
+          </div>
+        )}
+
+        {mode === 'run' && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Heart Rate (BPM)</label>
+            <input 
+              type="number" 
+              value={targetHr} 
+              onChange={e => setTargetHr(Number(e.target.value))}
+              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all"
             />
             <p className="text-[10px] text-slate-400 italic">Protocol: 180 - Age. Stable for 60s to start.</p>
           </div>
