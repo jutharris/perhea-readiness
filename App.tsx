@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
@@ -7,15 +6,17 @@ import Insights from './components/Insights';
 import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
 import Onboarding from './components/Onboarding';
+import SubmaxTestUpload from './components/SubmaxTestUpload';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
-import { User, WellnessEntry, View, UserRole } from './types';
+import { User, WellnessEntry, View, UserRole, SubmaxTest } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<View>('LOGIN');
   const [entries, setEntries] = useState<WellnessEntry[]>([]);
   const [allEntries, setAllEntries] = useState<WellnessEntry[]>([]);
+  const [submaxTests, setSubmaxTests] = useState<SubmaxTest[]>([]);
   const [coachedAthletes, setCoachedAthletes] = useState<User[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -51,8 +52,12 @@ const App: React.FC = () => {
         setAllEntries(entriesData);
         setCoachedAthletes(coachedData);
       } else if (currentUser.role === 'ATHLETE') {
-        const userData = await storageService.getEntriesForUser(currentUser.id);
+        const [userData, testData] = await Promise.all([
+          storageService.getEntriesForUser(currentUser.id),
+          storageService.getSubmaxTestsForUser(currentUser.id)
+        ]);
         setEntries(userData);
+        setSubmaxTests(testData);
       }
     } catch (err) {
       console.error("Data Refresh Error:", err);
@@ -82,10 +87,7 @@ const App: React.FC = () => {
           setShowInviteCard(true);
         }
       } else {
-        // AUTHENTICATED BUT NO PROFILE: Route to onboarding
         const metadata = session.user.user_metadata || {};
-        
-        // Smart name extraction from social providers
         let firstName = metadata.given_name || metadata.first_name || '';
         let lastName = metadata.family_name || metadata.last_name || '';
         
@@ -119,7 +121,6 @@ const App: React.FC = () => {
     }
 
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Auth Event: ${event}`);
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         handleAuthChange(session);
       } else if (event === 'SIGNED_OUT') {
@@ -169,7 +170,6 @@ const App: React.FC = () => {
         setAuthMode('EMAIL_LOGIN');
       } else {
         await storageService.signIn(authForm.email, authForm.password);
-        // handleAuthChange will trigger automatically via listener
       }
     } catch (err: any) {
       alert(err.message);
@@ -260,7 +260,12 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-          <Dashboard entries={entries} user={user} onNewReport={() => setActiveView('FORM')} />
+          <Dashboard 
+            entries={entries} 
+            user={user} 
+            onNewReport={() => setActiveView('FORM')} 
+            onSubmaxTest={() => setActiveView('SUBMAX_TEST')}
+          />
           <Insights entries={entries} />
           {!user.coachId && !showInviteCard && (
             <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
@@ -272,6 +277,7 @@ const App: React.FC = () => {
         </div>
       )}
       {activeView === 'FORM' && user && <WellnessForm user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} />}
+      {activeView === 'SUBMAX_TEST' && user && <SubmaxTestUpload user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} onCancel={() => setActiveView('DASHBOARD')} />}
       {activeView === 'COACH_DASHBOARD' && user && <CoachDashboard coach={user} athletes={coachedAthletes} allEntries={allEntries} onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} />}
       {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={() => setActiveView('COACH_DASHBOARD')} />}
     </Layout>
