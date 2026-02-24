@@ -1,10 +1,9 @@
-
 import React, { useMemo } from 'react';
 import { WellnessEntry } from '../types';
 import { storageService } from '../services/storageService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-const Dashboard: React.FC<any> = ({ entries, user, onNewReport, hideAction = false }) => {
+const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false }) => {
   const readiness = storageService.calculateReadiness(entries);
   
   const statusMap = {
@@ -76,7 +75,10 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, hideAction = fal
       )}
 
       {!hideAction && (
-        <button onClick={onNewReport} className="w-full py-6 bg-slate-900 text-white font-black rounded-[2rem] shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all">Submit Daily Audit</button>
+        <div className="flex flex-col gap-3">
+          <button onClick={onNewReport} className="w-full py-6 bg-slate-900 text-white font-black rounded-[2rem] shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all">Submit Daily Audit</button>
+          <button onClick={onSubmaxTest} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-[2rem] border border-indigo-100 hover:bg-indigo-100 transition-all text-xs uppercase tracking-widest">Protocol: Submax Test</button>
+        </div>
       )}
 
       {entries.length > 1 && (
