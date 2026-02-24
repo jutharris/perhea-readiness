@@ -48,6 +48,26 @@ CREATE TABLE IF NOT EXISTS public.coach_adjustments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- [Previous tables: profiles, wellness_entries, coach_adjustments]
+
+CREATE TABLE IF NOT EXISTS public.submax_tests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  test_type TEXT NOT NULL,
+  sport TEXT NOT NULL,
+  file_name TEXT,
+  file_start_ts TIMESTAMPTZ,
+  test_start_ts TIMESTAMPTZ,
+  test_end_ts TIMESTAMPTZ,
+  elapsed_start_sec NUMERIC,
+  elapsed_end_sec NUMERIC,
+  summary JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
+
 -- 3. SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
