@@ -1,10 +1,62 @@
 import React, { useMemo } from 'react';
-import { WellnessEntry } from '../types';
+import { WellnessEntry, SubmaxTest } from '../types';
 import { storageService } from '../services/storageService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false }) => {
   const readiness = storageService.calculateReadiness(entries);
+  const [tests, setTests] = React.useState<SubmaxTest[]>([]);
+
+  React.useEffect(() => {
+    const fetchTests = async () => {
+      const data = await storageService.getSubmaxTestsForUser(user.id);
+      setTests(data);
+    };
+    fetchTests();
+  }, [user.id]);
+
+  const correlationBrief = useMemo(() => {
+    if (tests.length < 2 || entries.length < 7) return null;
+    const latestTest = tests[0];
+    const prevTest = tests[1];
+    
+    let change = 0;
+    if (latestTest.sport === 'run') {
+      const currentTotal = latestTest.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
+      const prevTotal = prevTest.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
+      change = ((prevTotal - currentTotal) / prevTotal) * 100;
+    } else {
+      const currentEff = latestTest.summary?.power_avg / latestTest.summary?.hr_avg;
+      const prevEff = prevTest.summary?.power_avg / prevTest.summary?.hr_avg;
+      change = ((currentEff - prevEff) / prevEff) * 100;
+    }
+
+    if (change > -1.5) return null; // Only show brief if significant decline
+
+    // Look back 21 days for covariates
+    const testDate = new Date(latestTest.createdAt);
+    const lookbackDate = new Date(testDate);
+    lookbackDate.setDate(lookbackDate.getDate() - 21);
+    
+    const recentEntries = entries.filter((e: WellnessEntry) => new Date(e.isoDate) >= lookbackDate);
+    if (recentEntries.length === 0) return null;
+
+    const avgSleep = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.sleepQuality, 0) / recentEntries.length;
+    const avgStress = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.stress, 0) / recentEntries.length;
+    const avgRpe = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.lastSessionRPE, 0) / recentEntries.length;
+
+    let insights = [];
+    if (avgSleep < 4) insights.push("Sleep quality has been lower than your baseline.");
+    if (avgStress < 4) insights.push("Subjective stress levels have been elevated.");
+    if (avgRpe > 7) insights.push("Training RPE has been consistently high.");
+
+    if (insights.length === 0) return null;
+
+    return {
+      change: change.toFixed(1),
+      insights
+    };
+  }, [tests, entries]);
   
   const statusMap = {
     'READY': { label: 'PRIME STATE', color: 'bg-indigo-600', sub: 'High Capacity for Work' },
@@ -78,6 +130,48 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
         <div className="flex flex-col gap-3">
           <button onClick={onNewReport} className="w-full py-6 bg-slate-900 text-white font-black rounded-[2rem] shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all">Submit Daily Audit</button>
           <button onClick={onSubmaxTest} className="w-full py-4 bg-indigo-50 text-indigo-600 font-black rounded-[2rem] border border-indigo-100 hover:bg-indigo-100 transition-all text-xs uppercase tracking-widest">Protocol: Submax Test</button>
+        </div>
+      )}
+
+      {correlationBrief && (
+        <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-100 text-left space-y-3 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="flex items-center gap-2">
+            <span className="text-rose-600">⚠️</span>
+            <h4 className="text-xs font-black text-rose-900 uppercase tracking-widest">System Correlation Detected</h4>
+          </div>
+          <p className="text-xs font-bold text-rose-700 leading-relaxed">
+            Your recent submax calibration showed a {correlationBrief.change}% efficiency drop. The system has identified the following potential covariates from your last 21 days:
+          </p>
+          <ul className="space-y-1">
+            {correlationBrief.insights.map((insight, i) => (
+              <li key={i} className="text-[10px] font-black text-rose-600 flex items-center gap-2">
+                <div className="w-1 h-1 bg-rose-400 rounded-full"></div>
+                {insight}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tests.length > 0 && (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
+          <div className="mb-4 flex justify-between items-end">
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Aerobic Calibration</h3>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Stability Logged</p>
+            </div>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+            {tests.slice(0, 4).map(test => (
+              <div key={test.id} className="flex-shrink-0 w-32 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                <p className="text-xs font-black text-slate-900 uppercase">{test.sport}</p>
+                <div className="mt-2 h-1 w-full bg-indigo-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-600 w-full"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
