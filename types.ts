@@ -2,6 +2,7 @@ export type UserRole = 'ATHLETE' | 'COACH' | 'PENDING';
 export type SessionType = 'TRAINING' | 'COMPETITION' | 'TRAVEL' | 'REST';
 export type ReadinessStatus = 'READY' | 'MINDFUL' | 'RECOVERY';
 export type PersonalityCalibration = 'STOIC' | 'BALANCED' | 'EXPRESSIVE';
+export type TrainingFocus = 'SPEED' | 'POWER' | 'AEROBIC_EFFICIENCY' | 'FREQUENCY' | 'VOLUME_TOLERANCE';
 
 export interface User {
   id: string;
@@ -12,6 +13,7 @@ export interface User {
   coachId?: string;
   inviteCode?: string;
   birthDate?: string;
+  trainingFocus?: TrainingFocus;
 }
 
 export interface WellnessEntry {
