@@ -25,7 +25,8 @@ export const storageService = {
         role: data.role as UserRole,
         coachId: data.coach_id,
         inviteCode: data.invite_code,
-        birthDate: data.birth_date
+        birthDate: data.birth_date,
+        trainingFocus: data.training_focus
       };
     } catch (err) {
       return null;
@@ -64,8 +65,18 @@ export const storageService = {
       role: data.role as UserRole,
       inviteCode: data.invite_code,
       coachId: data.coach_id,
-      birthDate: data.birth_date
+      birthDate: data.birth_date,
+      trainingFocus: data.training_focus
     };
+  },
+
+  updateTrainingFocus: async (userId: string, focus: string) => {
+    checkConfig();
+    const { error } = await supabase!
+      .from('profiles')
+      .update({ training_focus: focus })
+      .eq('id', userId);
+    if (error) throw error;
   },
 
   signInWithSocial: async (provider: 'google' | 'apple') => {
@@ -118,16 +129,16 @@ export const storageService = {
     const { error } = await supabase!.from('wellness_entries').insert([{
       user_id: entryData.userId,
       session_type: entryData.sessionType,
-      last_session_rpe: entryData.last_session_rpe,
+      last_session_rpe: entryData.lastSessionRPE,
       energy: entryData.energy,
       soreness: entryData.soreness,
-      sleep_hours: entryData.sleep_hours,
-      sleep_quality: entryData.sleep_quality,
+      sleep_hours: entryData.sleepHours,
+      sleep_quality: entryData.sleepQuality,
       stress: entryData.stress,
       social: entryData.social,
-      feeling_sick: entryData.feeling_sick,
+      feeling_sick: entryData.feelingSick,
       injured: entryData.injured,
-      menstrual_cycle: entryData.menstrual_cycle,
+      menstrual_cycle: entryData.menstrualCycle,
       comments: entryData.comments
     }]);
     if (error) throw error;
@@ -159,7 +170,7 @@ export const storageService = {
     checkConfig();
     const { data } = await supabase!.from('profiles').select('*').eq('role', 'ATHLETE').eq('coach_id', coachId);
     return (data || []).map(d => ({ 
-      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id, birthDate: d.birth_date 
+      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id, birthDate: d.birth_date, trainingFocus: d.training_focus 
     }));
   },
 
