@@ -192,7 +192,8 @@ export const storageService = {
       elapsed_start_sec: testData.elapsedStartSec,
       elapsed_end_sec: testData.elapsedEndSec,
       summary: testData.summary,
-      data: testData.data
+      data: testData.data,
+      tags: testData.tags
     }]);
     if (error) throw error;
   },
@@ -218,6 +219,7 @@ export const storageService = {
       elapsedEndSec: Number(d.elapsed_end_sec),
       summary: d.summary,
       data: d.data,
+      tags: d.tags,
       createdAt: d.created_at
     }));
   },
