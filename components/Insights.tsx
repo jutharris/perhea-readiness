@@ -43,4 +43,10 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole }> = ({ ent
           <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <p className="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap
+        <p className="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">{analysis}</p>
+      )}
+    </div>
+  );
+};
+
+export default Insights;
