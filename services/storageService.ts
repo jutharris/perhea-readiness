@@ -1,11 +1,12 @@
 import { supabase } from './supabaseClient';
-import { User, WellnessEntry, UserRole, ReadinessStatus, SubmaxTest } from '../types';
+import { User, WellnessEntry, UserRole, ReadinessStatus, SubmaxTest, PersonalityCalibration } from '../types';
 
 const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
 };
 
 export const storageService = {
+  // Purely fetches the profile from DB
   getProfile: async (userId: string): Promise<User | null> => {
     checkConfig();
     try {
@@ -14,7 +15,9 @@ export const storageService = {
         .select('*')
         .eq('id', userId)
         .single();
+
       if (error || !data) return null;
+
       return {
         id: data.id,
         email: data.email,
@@ -24,15 +27,18 @@ export const storageService = {
         coachId: data.coach_id,
         inviteCode: data.invite_code,
         birthDate: data.birth_date,
-        trainingFocus: data.training_focus
+        trainingFocus: data.training_focus,
+        personalityCalibration: data.personality_calibration as PersonalityCalibration
       };
     } catch (err) {
       return null;
     }
   },
 
+  // First-time record creation in public.profiles
   initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string): Promise<User> => {
     checkConfig();
+    
     const insertData: any = {
       id: userId,
       email: email,
@@ -41,15 +47,19 @@ export const storageService = {
       role: role,
       birth_date: birthDate
     };
+
     if (role === 'COACH') {
       insertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     }
+
     const { data, error } = await supabase!
       .from('profiles')
       .upsert(insertData)
       .select()
       .single();
+
     if (error) throw error;
+    
     return {
       id: data.id,
       email: data.email,
@@ -59,7 +69,8 @@ export const storageService = {
       inviteCode: data.invite_code,
       coachId: data.coach_id,
       birthDate: data.birth_date,
-      trainingFocus: data.training_focus
+      trainingFocus: data.training_focus,
+      personalityCalibration: data.personality_calibration as PersonalityCalibration
     };
   },
 
@@ -68,6 +79,15 @@ export const storageService = {
     const { error } = await supabase!
       .from('profiles')
       .update({ training_focus: focus })
+      .eq('id', userId);
+    if (error) throw error;
+  },
+
+  updatePersonalityCalibration: async (userId: string, calibration: PersonalityCalibration) => {
+    checkConfig();
+    const { error } = await supabase!
+      .from('profiles')
+      .update({ personality_calibration: calibration })
       .eq('id', userId);
     if (error) throw error;
   },
@@ -163,7 +183,15 @@ export const storageService = {
     checkConfig();
     const { data } = await supabase!.from('profiles').select('*').eq('role', 'ATHLETE').eq('coach_id', coachId);
     return (data || []).map(d => ({ 
-      id: d.id, email: d.email, firstName: d.first_name, lastName: d.last_name, role: d.role as UserRole, coachId: d.coach_id, birthDate: d.birth_date, trainingFocus: d.training_focus 
+      id: d.id, 
+      email: d.email, 
+      firstName: d.first_name, 
+      lastName: d.last_name, 
+      role: d.role as UserRole, 
+      coachId: d.coach_id, 
+      birthDate: d.birth_date, 
+      trainingFocus: d.training_focus,
+      personalityCalibration: d.personality_calibration as PersonalityCalibration
     }));
   },
 
@@ -198,6 +226,7 @@ export const storageService = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    
     return (data || []).map(d => ({
       id: d.id,
       userId: d.user_id,
@@ -229,25 +258,34 @@ export const storageService = {
 
   calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21) => {
     if (entries.length < 7) return null;
+    
     const now = new Date();
     const cutoff = new Date();
     cutoff.setDate(now.getDate() - lookbackDays);
+    
     const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
     if (recent.length === 0) return null;
+
+    // Split into two halves to check for trends
     const mid = Math.floor(recent.length / 2);
     const firstHalf = recent.slice(mid);
     const secondHalf = recent.slice(0, mid);
+
     const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
       const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
       return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     };
+
     const metrics: (keyof WellnessEntry)[] = ['sleepQuality', 'stress', 'lastSessionRPE', 'energy', 'soreness', 'social'];
     const correlations = metrics.map(m => {
       const avg1 = getAvg(firstHalf, m);
       const avg2 = getAvg(secondHalf, m);
       if (avg1 === null || avg2 === null) return null;
+      
       const diff = avg2 - avg1;
+      // For RPE and Stress, positive diff is bad. For others, negative diff is bad.
       const isNegativeTrend = (m === 'lastSessionRPE' || m === 'stress') ? diff > 0.5 : diff < -0.5;
+      
       return {
         metric: m,
         diff,
@@ -255,15 +293,18 @@ export const storageService = {
         label: m.replace(/([A-Z])/g, ' $1').toLowerCase()
       };
     }).filter(c => c !== null && c.isNegativeTrend);
+
     return correlations;
   },
 
-  calculateMetricStats: (entries: WellnessEntry[], lookbackDays: number = 28) => {
+  calculateMetricStats: (entries: WellnessEntry[], lookbackDays: number = 28, calibration: PersonalityCalibration = 'BALANCED') => {
     if (entries.length === 0) return [];
+    
     const now = new Date();
     const cutoff = new Date();
     cutoff.setDate(now.getDate() - lookbackDays);
     const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
+    
     const metrics: { key: keyof WellnessEntry; label: string }[] = [
       { key: 'sleepQuality', label: 'Sleep' },
       { key: 'energy', label: 'Energy' },
@@ -271,15 +312,29 @@ export const storageService = {
       { key: 'soreness', label: 'Soreness' },
       { key: 'social', label: 'Mood' }
     ];
+
+    // Adjust volatility thresholds based on personality calibration
+    // Stoic: Low threshold (very sensitive)
+    // Balanced: Standard threshold
+    // Expressive: High threshold (less sensitive to noise)
+    const thresholds = {
+      STOIC: { volatile: 0.8, moderate: 0.5 },
+      BALANCED: { volatile: 1.2, moderate: 0.8 },
+      EXPRESSIVE: { volatile: 1.8, moderate: 1.2 }
+    }[calibration] || { volatile: 1.2, moderate: 0.8 };
+
     return metrics.map(m => {
       const vals = recent.map(e => e[m.key]).filter(v => typeof v === 'number') as number[];
       if (vals.length === 0) return { ...m, avg: 0, volatility: 0, status: 'NO DATA' };
+      
       const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
       const variance = vals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / vals.length;
       const stdDev = Math.sqrt(variance);
+      
       let status = 'STABLE';
-      if (stdDev > 1.2) status = 'VOLATILE';
-      else if (stdDev > 0.8) status = 'MODERATE';
+      if (stdDev > thresholds.volatile) status = 'VOLATILE';
+      else if (stdDev > thresholds.moderate) status = 'MODERATE';
+
       return {
         ...m,
         avg: (avg / 7) * 100,
