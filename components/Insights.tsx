@@ -55,4 +55,4 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole }> = ({ ent
   );
 };
 
-export default
+export default Insights;
