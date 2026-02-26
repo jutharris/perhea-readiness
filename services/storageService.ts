@@ -14,9 +14,7 @@ export const storageService = {
         .select('*')
         .eq('id', userId)
         .single();
-
       if (error || !data) return null;
-
       return {
         id: data.id,
         email: data.email,
@@ -35,7 +33,6 @@ export const storageService = {
 
   initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string): Promise<User> => {
     checkConfig();
-    
     const insertData: any = {
       id: userId,
       email: email,
@@ -44,19 +41,15 @@ export const storageService = {
       role: role,
       birth_date: birthDate
     };
-
     if (role === 'COACH') {
       insertData.invite_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     }
-
     const { data, error } = await supabase!
       .from('profiles')
       .upsert(insertData)
       .select()
       .single();
-
     if (error) throw error;
-    
     return {
       id: data.id,
       email: data.email,
@@ -205,7 +198,6 @@ export const storageService = {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    
     return (data || []).map(d => ({
       id: d.id,
       userId: d.user_id,
@@ -237,34 +229,25 @@ export const storageService = {
 
   calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21) => {
     if (entries.length < 7) return null;
-    
     const now = new Date();
     const cutoff = new Date();
     cutoff.setDate(now.getDate() - lookbackDays);
-    
     const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
     if (recent.length === 0) return null;
-
-    // Split into two halves to check for trends
     const mid = Math.floor(recent.length / 2);
     const firstHalf = recent.slice(mid);
     const secondHalf = recent.slice(0, mid);
-
     const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
       const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
       return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     };
-
     const metrics: (keyof WellnessEntry)[] = ['sleepQuality', 'stress', 'lastSessionRPE', 'energy', 'soreness', 'social'];
     const correlations = metrics.map(m => {
       const avg1 = getAvg(firstHalf, m);
       const avg2 = getAvg(secondHalf, m);
       if (avg1 === null || avg2 === null) return null;
-      
       const diff = avg2 - avg1;
-      // For RPE and Stress, positive diff is bad. For others, negative diff is bad.
       const isNegativeTrend = (m === 'lastSessionRPE' || m === 'stress') ? diff > 0.5 : diff < -0.5;
-      
       return {
         metric: m,
         diff,
@@ -272,7 +255,37 @@ export const storageService = {
         label: m.replace(/([A-Z])/g, ' $1').toLowerCase()
       };
     }).filter(c => c !== null && c.isNegativeTrend);
-
     return correlations;
+  },
+
+  calculateMetricStats: (entries: WellnessEntry[], lookbackDays: number = 28) => {
+    if (entries.length === 0) return [];
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(now.getDate() - lookbackDays);
+    const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
+    const metrics: { key: keyof WellnessEntry; label: string }[] = [
+      { key: 'sleepQuality', label: 'Sleep' },
+      { key: 'energy', label: 'Energy' },
+      { key: 'stress', label: 'Stress' },
+      { key: 'soreness', label: 'Soreness' },
+      { key: 'social', label: 'Mood' }
+    ];
+    return metrics.map(m => {
+      const vals = recent.map(e => e[m.key]).filter(v => typeof v === 'number') as number[];
+      if (vals.length === 0) return { ...m, avg: 0, volatility: 0, status: 'NO DATA' };
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const variance = vals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / vals.length;
+      const stdDev = Math.sqrt(variance);
+      let status = 'STABLE';
+      if (stdDev > 1.2) status = 'VOLATILE';
+      else if (stdDev > 0.8) status = 'MODERATE';
+      return {
+        ...m,
+        avg: (avg / 7) * 100,
+        volatility: stdDev,
+        status
+      };
+    });
   }
 };
