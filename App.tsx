@@ -43,7 +43,11 @@ const App: React.FC = () => {
   const hasSubmittedToday = useMemo(() => {
     if (user?.role !== 'ATHLETE') return true;
     const today = getAthleteDay(new Date());
-    return entries.some(e => e.isoDate === today);
+    // Normalize entry date to athlete day for comparison
+    return entries.some(e => {
+      const entryDate = new Date(e.isoDate);
+      return getAthleteDay(entryDate) === today;
+    });
   }, [entries, user]);
 
   useEffect(() => {
@@ -251,7 +255,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout activeView={activeView} setView={setActiveView} user={user} onLogout={handleLogout}>
+    <Layout 
+      activeView={activeView} 
+      setView={setActiveView} 
+      user={user} 
+      onLogout={handleLogout}
+      hideNav={user?.role === 'ATHLETE' && !hasSubmittedToday}
+    >
       {activeView === 'ONBOARDING' && user && (
         <Onboarding user={user} onComplete={(updatedUser) => {
           setUser(updatedUser);
