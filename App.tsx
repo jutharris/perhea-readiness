@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
 import Dashboard from './components/Dashboard';
@@ -7,9 +7,11 @@ import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
 import Onboarding from './components/Onboarding';
 import SubmaxTestUpload from './components/SubmaxTestUpload';
+import Trends from './components/Trends';
+import SubmaxLab from './components/SubmaxLab';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
-import { User, WellnessEntry, View, UserRole, SubmaxTest } from './types';
+import { User, WellnessEntry, View, UserRole } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,6 +30,21 @@ const App: React.FC = () => {
   const [isBooting, setIsBooting] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showGoldStar, setShowGoldStar] = useState(false);
+
+  const getAthleteDay = (date: Date) => {
+    const d = new Date(date);
+    if (d.getHours() < 2) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.toISOString().split('T')[0];
+  };
+
+  const hasSubmittedToday = useMemo(() => {
+    if (user?.role !== 'ATHLETE') return true;
+    const today = getAthleteDay(new Date());
+    return entries.some(e => e.isoDate === today);
+  }, [entries, user]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -244,39 +261,94 @@ const App: React.FC = () => {
       )}
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {isRefreshing && (
-            <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full w-fit mx-auto border border-indigo-100">
-              <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Updating Stats...</span>
+          {showGoldStar && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-sm">
+              <style>{`
+                @keyframes star-pulse {
+                  0%, 100% { transform: scale(1); opacity: 1; }
+                  50% { transform: scale(1.5); opacity: 0.8; }
+                }
+                .animate-star {
+                  animation: star-pulse 0.6s ease-in-out 3;
+                }
+              `}</style>
+              <div className="text-8xl animate-star">⭐</div>
             </div>
           )}
-          {showInviteCard && inviteCode && (
-            <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 space-y-4">
-              <h3 className="text-xl font-black">Join Squad?</h3>
-              <p className="text-sm font-medium opacity-90 leading-relaxed">Invitation detected: <span className="font-black underline">{inviteCode}</span>. Link your metrics?</p>
-              <div className="flex gap-4 pt-2">
-                <button onClick={() => handleJoinSquad(inviteCode)} className="flex-1 bg-white text-indigo-600 py-4 rounded-2xl font-black text-xs">JOIN</button>
-                <button onClick={() => {setShowInviteCard(false); localStorage.removeItem('pending_join_code');}} className="px-6 bg-white/20 py-4 rounded-2xl font-black text-xs">LATER</button>
+          
+          {user.role === 'ATHLETE' && !hasSubmittedToday ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 py-12">
+              <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-4xl shadow-inner">📋</div>
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Protocol Required</h2>
+                <p className="text-slate-500 font-medium px-8">Your dashboard is locked until the morning audit is complete.</p>
               </div>
+              <button 
+                onClick={() => setActiveView('FORM')}
+                className="w-full max-w-md py-8 bg-indigo-600 text-white font-black rounded-[2.5rem] shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all text-xl uppercase tracking-widest"
+              >
+                Daily Wellness Audit
+              </button>
             </div>
-          )}
-          <Dashboard 
-            entries={entries} 
-            user={user} 
-            onNewReport={() => setActiveView('FORM')} 
-            onSubmaxTest={() => setActiveView('SUBMAX_TEST')}
-          />
-          <Insights entries={entries} />
-          {!user.coachId && !showInviteCard && (
-            <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
-              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><span className="text-slate-400">⚡</span></div>
-              <p className="text-sm font-bold text-slate-400">Solo Performance.<br/>Enter a coach code to share data.</p>
-              <button onClick={() => {const code = prompt("Enter Squad Invite Code:"); if (code) handleJoinSquad(code);}} className="text-[10px] font-black bg-slate-900 text-white px-8 py-4 rounded-xl uppercase tracking-widest">Join Squad</button>
-            </div>
+          ) : (
+            <>
+              {isRefreshing && (
+                <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 rounded-full w-fit mx-auto border border-indigo-100">
+                  <div className="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Updating Stats...</span>
+                </div>
+              )}
+              {showInviteCard && inviteCode && (
+                <div className="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 space-y-4">
+                  <h3 className="text-xl font-black">Join Squad?</h3>
+                  <p className="text-sm font-medium opacity-90 leading-relaxed">Invitation detected: <span className="font-black underline">{inviteCode}</span>. Link your metrics?</p>
+                  <div className="flex gap-4 pt-2">
+                    <button onClick={() => handleJoinSquad(inviteCode)} className="flex-1 bg-white text-indigo-600 py-4 rounded-2xl font-black text-xs">JOIN</button>
+                    <button onClick={() => {setShowInviteCard(false); localStorage.removeItem('pending_join_code');}} className="px-6 bg-white/20 py-4 rounded-2xl font-black text-xs">LATER</button>
+                  </div>
+                </div>
+              )}
+              <Dashboard 
+                entries={entries} 
+                user={user} 
+                onNewReport={() => setActiveView('FORM')} 
+                onSubmaxTest={() => setActiveView('SUBMAX_TEST')}
+                hideAction={true}
+              />
+              {!user.coachId && !showInviteCard && (
+                <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
+                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><span className="text-slate-400">⚡</span></div>
+                  <p className="text-sm font-bold text-slate-400">Solo Performance.<br/>Enter a coach code to share data.</p>
+                  <button onClick={() => {const code = prompt("Enter Squad Invite Code:"); if (code) handleJoinSquad(code);}} className="text-[10px] font-black bg-slate-900 text-white px-8 py-4 rounded-xl uppercase tracking-widest">Join Squad</button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
-      {activeView === 'FORM' && user && <WellnessForm user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} />}
+      {activeView === 'TRENDS' && user && (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Trends entries={entries} user={user} />
+        </div>
+      )}
+      {activeView === 'SUBMAX_LAB' && user && (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <SubmaxLab user={user} tests={submaxTests} onNewTest={() => setActiveView('SUBMAX_TEST')} />
+        </div>
+      )}
+      {activeView === 'FORM' && user && (
+        <WellnessForm 
+          user={user} 
+          onComplete={async () => { 
+            setShowGoldStar(true);
+            setTimeout(async () => {
+              setShowGoldStar(false);
+              await refreshData(user); 
+              setActiveView('DASHBOARD'); 
+            }, 2000);
+          }} 
+        />
+      )}
       {activeView === 'SUBMAX_TEST' && user && <SubmaxTestUpload user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} onCancel={() => setActiveView('DASHBOARD')} />}
       {activeView === 'COACH_DASHBOARD' && user && <CoachDashboard coach={user} athletes={coachedAthletes} allEntries={allEntries} onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} />}
       {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={() => setActiveView('COACH_DASHBOARD')} />}
