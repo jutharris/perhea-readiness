@@ -65,7 +65,22 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       change = ((currentEff - prevEff) / prevEff) * 100; // Positive is more efficient
     }
 
+    const focus = athlete.trainingFocus;
+    const isAging = athleteAge && athleteAge >= 45;
     const absChange = Math.abs(change);
+
+    // 1. Specificity Logic: Speed/Power focus allows for slight efficiency trade-offs
+    if (focus === 'SPEED' || focus === 'POWER' || focus === 'STRENGTH') {
+      if (change < 0 && absChange <= 1.5) {
+        return { change, label: 'EXPECTED SHIFT', color: 'text-amber-400' };
+      }
+    }
+
+    // 2. Biological Resilience: Stability is a major win for aging athletes
+    if (isAging && absChange <= 0.5) {
+      return { change, label: 'RESILIENCE MAINTAINED', color: 'text-emerald-500 font-black' };
+    }
+
     if (absChange <= 0.5) return { change, label: 'STABILIZING', color: 'text-indigo-500' };
     if (absChange <= 1.5) return { change, label: change > 0 ? 'SUBTLE IMPROVEMENT' : 'SUBTLE DECLINE', color: change > 0 ? 'text-emerald-500' : 'text-amber-500' };
     return { change, label: change > 0 ? 'SIGNIFICANT GAIN' : 'SIGNIFICANT FATIGUE', color: change > 0 ? 'text-emerald-600' : 'text-rose-600' };
@@ -100,6 +115,19 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     return { testA, testB, mA, mB };
   }, [comparisonId, tests]);
 
+  const stabilityIndex = useMemo(() => {
+    if (!athleteAge || athleteAge < 45 || tests.length < 3) return null;
+    const recentTests = tests.slice(0, 5);
+    const changes = recentTests.map((t, i) => {
+      if (i === recentTests.length - 1) return null;
+      const analysis = getTestAnalysis(t, i);
+      return Math.abs(analysis.change);
+    }).filter(c => c !== null) as number[];
+    
+    const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+    return Math.max(0, Math.min(100, 100 - (avgChange * 10))); // Scale: 1% avg change = 90 index
+  }, [athleteAge, tests]);
+
   return (
     <div className="space-y-8">
       <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
@@ -107,12 +135,21 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <div className="space-y-1">
           <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
-          {athleteAge && athleteAge >= 45 && (
-            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
-              <span className="text-xs font-black uppercase tracking-widest">Biological Resilience</span>
-              <span className="text-[10px] font-bold opacity-60">System Stability Verified</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {athleteAge && athleteAge >= 45 && (
+              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
+                <span className="text-xs font-black uppercase tracking-widest">Biological Resilience</span>
+                {stabilityIndex !== null && (
+                  <span className="text-[10px] font-bold opacity-60">Index: {stabilityIndex.toFixed(0)}</span>
+                )}
+              </div>
+            )}
+            {athlete.trainingFocus && (
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
+                Focus: {athlete.trainingFocus.replace('_', ' ')}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
