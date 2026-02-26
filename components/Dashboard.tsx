@@ -33,24 +33,15 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
 
     if (change > -1.5) return null; // Only show brief if significant decline
 
-    // Look back 21 days for covariates
-    const testDate = new Date(latestTest.createdAt);
-    const lookbackDate = new Date(testDate);
-    lookbackDate.setDate(lookbackDate.getDate() - 21);
-    
-    const recentEntries = entries.filter((e: WellnessEntry) => new Date(e.isoDate) >= lookbackDate);
-    if (recentEntries.length === 0) return null;
+    const correlations = storageService.calculateCorrelations(entries, 21);
+    if (!correlations || correlations.length === 0) return null;
 
-    const avgSleep = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.sleepQuality, 0) / recentEntries.length;
-    const avgStress = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.stress, 0) / recentEntries.length;
-    const avgRpe = recentEntries.reduce((acc: number, e: WellnessEntry) => acc + e.lastSessionRPE, 0) / recentEntries.length;
-
-    let insights = [];
-    if (avgSleep < 4) insights.push("Sleep quality has been lower than your baseline.");
-    if (avgStress < 4) insights.push("Subjective stress levels have been elevated.");
-    if (avgRpe > 7) insights.push("Training RPE has been consistently high.");
-
-    if (insights.length === 0) return null;
+    const insights = correlations.map(c => {
+      if (c.metric === 'lastSessionRPE') return "Training intensity (RPE) has been trending higher.";
+      if (c.metric === 'stress') return "Subjective stress levels have been rising.";
+      if (c.metric === 'sleepQuality') return "Sleep quality has been declining.";
+      return `Your ${c.label} has been lower than your baseline.`;
+    });
 
     return {
       change: change.toFixed(1),
