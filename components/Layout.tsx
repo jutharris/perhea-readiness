@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { View, User } from '../types';
 
@@ -8,9 +7,10 @@ interface LayoutProps {
   setView: (view: View) => void;
   user: User | null;
   onLogout: () => void;
+  hideNav?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, onLogout }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, onLogout, hideNav }) => {
   const isCoach = user?.role === 'COACH';
   const isPending = user?.role === 'PENDING';
 
@@ -33,7 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
       <main className="flex-1 w-full max-w-4xl mx-auto px-6 py-8 pb-32">
         {children}
       </main>
-      {user && !isPending && (
+      {user && !isPending && !hideNav && (
         <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-lg px-8 py-4 flex space-x-12 rounded-[2rem] shadow-2xl border border-white/10">
           {isCoach ? (
             <>
@@ -42,7 +42,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
           ) : (
             <>
               <button onClick={() => setView('DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>READY</button>
-              <button onClick={() => setView('FORM')} className={`text-xs font-black transition-colors ${activeView === 'FORM' ? 'text-indigo-400' : 'text-slate-400'}`}>REPORT</button>
+              <button onClick={() => setView('TRENDS')} className={`text-xs font-black transition-colors ${activeView === 'TRENDS' ? 'text-indigo-400' : 'text-slate-400'}`}>TRENDS</button>
+              <button onClick={() => setView('SUBMAX_LAB')} className={`text-xs font-black transition-colors ${activeView === 'SUBMAX_LAB' ? 'text-indigo-400' : 'text-slate-400'}`}>LAB</button>
             </>
           )}
         </nav>
