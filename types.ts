@@ -14,6 +14,7 @@ export interface User {
   inviteCode?: string;
   birthDate?: string;
   trainingFocus?: TrainingFocus;
+  personalityCalibration?: PersonalityCalibration;
 }
 
 export interface WellnessEntry {
@@ -35,7 +36,7 @@ export interface WellnessEntry {
   comments: string;
 }
 
-export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'FORM' | 'INSIGHTS' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST';
+export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST';
 
 export interface SubmaxTest {
   id: string;
@@ -49,7 +50,7 @@ export interface SubmaxTest {
   elapsedStartSec: number;
   elapsedEndSec: number;
   summary: any;
-  data: any; // Stores the 'miles' or 'segments' array
+  data: any;
   tags?: string[];
   createdAt: string;
 }
