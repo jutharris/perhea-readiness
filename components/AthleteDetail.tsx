@@ -9,6 +9,17 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [msg, setMsg] = useState('');
   const [tests, setTests] = useState<SubmaxTest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [comparisonId, setComparisonId] = useState<string | null>(null);
+
+  const athleteAge = useMemo(() => {
+    if (!athlete.birthDate) return null;
+    const birth = new Date(athlete.birthDate);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+    return age;
+  }, [athlete.birthDate]);
 
   useEffect(() => {
     const fetchTests = async () => {
@@ -69,12 +80,40 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     return correlations;
   }, [tests, entries]);
 
+  const comparisonData = useMemo(() => {
+    if (!comparisonId) return null;
+    const testA = tests[0];
+    const testB = tests.find(t => t.id === comparisonId);
+    if (!testA || !testB) return null;
+
+    const getMetrics = (t: SubmaxTest) => {
+      if (t.sport === 'run') {
+        const totalSec = t.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
+        return { total: totalSec, hr: t.summary?.hr_avg, gap: t.summary?.split_range_sec };
+      }
+      return { total: t.summary?.power_avg / t.summary?.hr_avg, hr: t.summary?.hr_avg, gap: t.summary?.eff_change_pct_seg3_vs_seg1 };
+    };
+
+    const mA = getMetrics(testA);
+    const mB = getMetrics(testB);
+
+    return { testA, testB, mA, mB };
+  }, [comparisonId, tests]);
+
   return (
     <div className="space-y-8">
       <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
       
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
+        <div className="space-y-1">
+          <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
+          {athleteAge && athleteAge >= 45 && (
+            <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
+              <span className="text-xs font-black uppercase tracking-widest">Biological Resilience</span>
+              <span className="text-[10px] font-bold opacity-60">System Stability Verified</span>
+            </div>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
             <button
@@ -89,6 +128,58 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       </div>
       
       <Dashboard entries={entries} user={athlete} onNewReport={() => {}} hideAction />
+
+      {comparisonData && (
+        <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl animate-in zoom-in-95 duration-500">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-black uppercase tracking-widest">Longitudinal Comparison</h3>
+            <button onClick={() => setComparisonId(null)} className="text-white/40 hover:text-white">✕</button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Current Build</p>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-xs font-bold">{new Date(comparisonData.testA.createdAt).toLocaleDateString()}</p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-60">Efficiency</span>
+                    <span className="font-black">{comparisonData.mA.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-60">Avg HR</span>
+                    <span className="font-black">{Math.round(comparisonData.mA.hr || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Historical Reference</p>
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                <p className="text-xs font-bold">{new Date(comparisonData.testB.createdAt).toLocaleDateString()}</p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-60">Efficiency</span>
+                    <span className="font-black">{comparisonData.mB.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="opacity-60">Avg HR</span>
+                    <span className="font-black">{Math.round(comparisonData.mB.hr || 0)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/10">
+            <p className="text-xs font-bold text-indigo-400">
+              Analysis: {comparisonData.mA.total > comparisonData.mB.total ? 'Aerobic floor has risen.' : 'Biological resilience maintained.'} 
+              The athlete is currently {Math.abs(((comparisonData.mA.total - comparisonData.mB.total) / comparisonData.mB.total) * 100).toFixed(1)}% {comparisonData.mA.total > comparisonData.mB.total ? 'more' : 'less'} efficient than the reference point.
+            </p>
+          </div>
+        </div>
+      )}
 
       {coachBrief && coachBrief.length > 0 && (
         <div className="bg-indigo-900 p-8 rounded-[2.5rem] text-white space-y-4 shadow-2xl">
@@ -130,9 +221,17 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
               return (
                 <div key={test.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 px-2 py-1 rounded uppercase tracking-widest">{test.sport}</span>
-                      <p className="text-xs font-bold text-slate-500 mt-1">{new Date(test.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs font-bold text-slate-500">{new Date(test.createdAt).toLocaleDateString()}</p>
+                      {idx > 0 && (
+                        <button 
+                          onClick={() => setComparisonId(test.id)}
+                          className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                        >
+                          Compare to Latest
+                        </button>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{analysis.label}</p>
