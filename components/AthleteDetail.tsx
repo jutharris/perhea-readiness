@@ -65,10 +65,10 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     <div className="space-y-8">
       <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
       
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
-        <div className="flex gap-2">
-          {(['SPEED', 'POWER', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
+        <div className="flex flex-wrap gap-2">
+          {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
             <button
               key={f}
               onClick={() => updateFocus(f)}
