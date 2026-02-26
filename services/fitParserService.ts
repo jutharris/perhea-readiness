@@ -43,6 +43,7 @@ export const fitParserService = {
         try {
           let arrayBuffer = e.target?.result as ArrayBuffer;
           
+          // Handle .gz
           if (file.name.toLowerCase().endsWith('.gz')) {
             const uint8Array = new Uint8Array(arrayBuffer);
             arrayBuffer = pako.ungzip(uint8Array).buffer;
@@ -104,8 +105,8 @@ export const fitParserService = {
         elapsed_end_sec: getElapsedSeconds(end, fileStart),
         elapsed_start_mmss: formatMMSS(getElapsedSeconds(start, fileStart)),
         elapsed_end_mmss: formatMMSS(getElapsedSeconds(end, fileStart)),
-        split_time_sec: split_sec,
-        split_time_mmss: formatMMSS(split_sec),
+        split_time_sec: splitSec,
+        split_time_mmss: formatMMSS(splitSec),
         hr_avg: hrAvg,
         cad_avg: cadAvg,
       };
@@ -116,14 +117,14 @@ export const fitParserService = {
     const hr3 = miles[2].hr_avg;
 
     return {
-      test_type: "treadmill_run_3mi_lap",
+      testType: "treadmill_run_3mi_lap",
       sport: "run",
-      file_name: fileName,
-      file_start_ts: fileStart.toISOString(),
-      test_start_ts: miles[0].start_ts,
-      test_end_ts: miles[2].end_ts,
-      elapsed_start_sec: miles[0].elapsed_start_sec,
-      elapsed_end_sec: miles[2].elapsed_end_sec,
+      fileName: fileName,
+      fileStartTs: fileStart.toISOString(),
+      testStartTs: miles[0].start_ts,
+      testEndTs: miles[2].end_ts,
+      elapsedStartSec: miles[0].elapsed_start_sec,
+      elapsedEndSec: miles[2].elapsed_end_sec,
       summary: {
         split_range_sec: Math.max(...splitSecs) - Math.min(...splitSecs),
         split_range_mmss: formatMMSS(Math.max(...splitSecs) - Math.min(...splitSecs)),
@@ -247,14 +248,14 @@ export const fitParserService = {
     const effChangePct = (eff1 && eff3 && eff1 !== 0) ? ((eff3 - eff1) / eff1) * 100 : null;
 
     return {
-      test_type: "bike_hr_submax_30min_3x10",
+      testType: "bike_hr_submax_30min_3x10",
       sport: "bike",
-      file_name: fileName,
-      file_start_ts: fileStart.toISOString(),
-      test_start_ts: testStartTs.toISOString(),
-      test_end_ts: testEndTs.toISOString(),
-      elapsed_start_sec: getElapsedSeconds(testStartTs, fileStart),
-      elapsed_end_sec: getElapsedSeconds(testEndTs, fileStart),
+      fileName: fileName,
+      fileStartTs: fileStart.toISOString(),
+      testStartTs: testStartTs.toISOString(),
+      testEndTs: testEndTs.toISOString(),
+      elapsedStartSec: getElapsedSeconds(testStartTs, fileStart),
+      elapsedEndSec: getElapsedSeconds(testEndTs, fileStart),
       summary: {
         eff_change_pct_seg3_vs_seg1: effChangePct,
         hr_avg: testRecords.reduce((a, b) => a + (b.heart_rate || 0), 0) / testRecords.length,
