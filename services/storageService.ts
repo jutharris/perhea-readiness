@@ -231,5 +231,46 @@ export const storageService = {
     if (score < 40 || latest.injured || latest.feelingSick || latest.menstrualCycle) status = 'RECOVERY';
     else if (score < 65) status = 'MINDFUL';
     return { status, score, trend: 'STABLE', acwr: 1.0 };
+  },
+
+  calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21) => {
+    if (entries.length < 7) return null;
+    
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(now.getDate() - lookbackDays);
+    
+    const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
+    if (recent.length === 0) return null;
+
+    // Split into two halves to check for trends
+    const mid = Math.floor(recent.length / 2);
+    const firstHalf = recent.slice(mid);
+    const secondHalf = recent.slice(0, mid);
+
+    const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
+      const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+
+    const metrics: (keyof WellnessEntry)[] = ['sleepQuality', 'stress', 'lastSessionRPE', 'energy', 'soreness', 'social'];
+    const correlations = metrics.map(m => {
+      const avg1 = getAvg(firstHalf, m);
+      const avg2 = getAvg(secondHalf, m);
+      if (avg1 === null || avg2 === null) return null;
+      
+      const diff = avg2 - avg1;
+      // For RPE and Stress, positive diff is bad. For others, negative diff is bad.
+      const isNegativeTrend = (m === 'lastSessionRPE' || m === 'stress') ? diff > 0.5 : diff < -0.5;
+      
+      return {
+        metric: m,
+        diff,
+        isNegativeTrend,
+        label: m.replace(/([A-Z])/g, ' $1').toLowerCase()
+      };
+    }).filter(c => c !== null && c.isNegativeTrend);
+
+    return correlations;
   }
 };
