@@ -11,7 +11,7 @@ import Trends from './components/Trends';
 import SubmaxLab from './components/SubmaxLab';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
-import { User, WellnessEntry, View, UserRole } from './types';
+import { User, WellnessEntry, View, UserRole, SubmaxTest } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
