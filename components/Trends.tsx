@@ -29,6 +29,17 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
     }).slice(-28);
   }, [entries]);
 
+  const metricStats = useMemo(() => {
+    const stats = storageService.calculateMetricStats(entries);
+    const foundationKeys = ['sleepQuality', 'energy', 'stress'];
+    const foundation = stats.filter(s => foundationKeys.includes(s.key as string));
+    const wildcardCandidates = stats.filter(s => !foundationKeys.includes(s.key as string));
+    const wildcards = wildcardCandidates
+      .sort((a, b) => b.volatility - a.volatility)
+      .slice(0, 1);
+    return [...foundation, ...wildcards];
+  }, [entries]);
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="text-left mb-8">
@@ -51,47 +62,12 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}}
-              />
-              <YAxis 
-                domain={[0, 100]} 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}}
-              />
-              <Tooltip 
-                cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
-                contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700}}
-              />
-              <Legend 
-                verticalAlign="top" 
-                align="right" 
-                iconType="circle" 
-                wrapperStyle={{paddingBottom: '20px', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'}} 
-              />
-              <Line 
-                name="Short Term (7d)" 
-                type="monotone" 
-                dataKey="avg7" 
-                stroke="#4f46e5" 
-                strokeWidth={4} 
-                dot={false}
-                animationDuration={1500}
-              />
-              <Line 
-                name="Baseline (28d)" 
-                type="monotone" 
-                dataKey="avg28" 
-                stroke="#cbd5e1" 
-                strokeWidth={2} 
-                strokeDasharray="4 4"
-                dot={false}
-                animationDuration={2000}
-              />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+              <Tooltip cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700}} />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{paddingBottom: '20px', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'}} />
+              <Line name="Short Term (7d)" type="monotone" dataKey="avg7" stroke="#4f46e5" strokeWidth={4} dot={false} animationDuration={1500} />
+              <Line name="Baseline (28d)" type="monotone" dataKey="avg28" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="4 4" dot={false} animationDuration={2000} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -104,14 +80,14 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Metric Distribution</h4>
           <div className="space-y-4">
-            {['Sleep', 'Energy', 'Stress', 'Soreness'].map(m => (
-              <div key={m} className="space-y-1">
+            {metricStats.map(m => (
+              <div key={m.key} className="space-y-1">
                 <div className="flex justify-between text-[10px] font-black uppercase">
-                  <span>{m}</span>
-                  <span className="text-slate-400">Stable</span>
+                  <span>{m.label}</span>
+                  <span className={`${m.status === 'VOLATILE' ? 'text-rose-500' : 'text-slate-400'}`}>{m.status}</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-600 w-[85%]"></div>
+                  <div className={`h-full transition-all duration-1000 ${m.status === 'VOLATILE' ? 'bg-rose-500' : 'bg-indigo-600'}`} style={{ width: `${m.avg}%` }}></div>
                 </div>
               </div>
             ))}
