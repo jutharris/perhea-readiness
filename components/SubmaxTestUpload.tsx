@@ -72,7 +72,7 @@ const SubmaxTestUpload: React.FC<Props> = ({ user, onComplete, onCancel }) => {
   return (
     <div className="bg-white p-8 rounded-[2.5rem] shadow-xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-slate-900">Submax Test Upload</h2>
+        <h2 className="text-2xl font-black text-slate-900">Aerobic Calibration</h2>
         <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
