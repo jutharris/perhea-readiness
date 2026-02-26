@@ -16,7 +16,6 @@ export interface User {
   trainingFocus?: TrainingFocus;
 }
 
-// Added WellnessEntry interface to track daily athlete status and internal load metrics
 export interface WellnessEntry {
   id: string;
   userId: string;
@@ -51,5 +50,6 @@ export interface SubmaxTest {
   elapsedEndSec: number;
   summary: any;
   data: any; // Stores the 'miles' or 'segments' array
+  tags?: string[];
   createdAt: string;
 }
