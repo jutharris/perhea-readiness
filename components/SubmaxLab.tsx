@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SubmaxTest, User } from '../types';
 
@@ -61,32 +62,48 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
               <h3 className="text-lg font-black uppercase tracking-widest">Lab Status: Mission Control</h3>
             </div>
             <p className="text-sm font-medium opacity-70 leading-relaxed">
-              Your physiological floor is currently stable. The last calibration shows a 1.2% efficiency gain compared to your 3-month baseline.
+              Your aerobic floor is currently being tracked. The system monitors your pace and power at a fixed heart rate to measure true metabolic efficiency.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {tests.map((test) => (
-              <div key={test.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-colors">
-                <div className="flex items-center gap-6">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-indigo-50 transition-colors">
-                    {test.sport === 'run' ? '🏃' : '🚴'}
+            {tests.map((test, idx) => {
+              const compliance = test.summary?.compliance || 'COMPLIANT';
+              const isNonCompliant = compliance === 'NON_COMPLIANT';
+              
+              return (
+                <div key={test.id} className={`bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-colors ${isNonCompliant ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center gap-6">
+                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-indigo-50 transition-colors">
+                      {test.sport === 'run' ? '🏃' : '🚴'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(test.createdAt).toLocaleDateString()}</p>
+                        {compliance === 'WARNING' && (
+                          <span className="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Warning</span>
+                        )}
+                        {compliance === 'NON_COMPLIANT' && (
+                          <span className="text-[8px] font-black bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Invalid</span>
+                        )}
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900 uppercase">{test.sport} Calibration</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        Target: {test.summary?.target_hr} bpm | Avg: {Math.round(test.summary?.hr_avg)} bpm
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(test.createdAt).toLocaleDateString()}</p>
-                    <h4 className="text-lg font-black text-slate-900 uppercase">{test.sport} Calibration</h4>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aerobic Floor</p>
+                    <p className="text-xl font-black text-indigo-600">
+                      {test.sport === 'bike' ? 
+                        `${Math.round(test.summary?.power_avg)}W` : 
+                        test.summary?.split_range_mmss}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Efficiency</p>
-                  <p className="text-xl font-black text-indigo-600">
-                    {test.sport === 'bike' ? 
-                      (test.summary?.power_avg / test.summary?.hr_avg).toFixed(2) : 
-                      test.summary?.split_range_mmss}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
