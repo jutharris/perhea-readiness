@@ -28,8 +28,8 @@ export const storageService = {
         coachId: data.coach_id,
         inviteCode: data.invite_code,
         birthDate: data.birth_date,
-        trainingFocus: data.training_focus,
-        personalityCalibration: data.personality_calibration as PersonalityCalibration
+        trainingFocus: (data.training_focus || data.focus) as TrainingFocus,
+        personalityCalibration: (data.personality_calibration || data.personality || data.reporting_style) as PersonalityCalibration
       };
     } catch (err) {
       return null;
@@ -77,20 +77,45 @@ export const storageService = {
 
   updateTrainingFocus: async (userId: string, focus: string) => {
     checkConfig();
-    const { error } = await supabase!
-      .from('profiles')
-      .update({ training_focus: focus })
-      .eq('id', userId);
-    if (error) throw error;
+    try {
+      const { error } = await supabase!
+        .from('profiles')
+        .update({ training_focus: focus })
+        .eq('id', userId);
+      if (error) throw error;
+    } catch (err: any) {
+      if (err.message?.includes('training_focus')) {
+        const { error } = await supabase!
+          .from('profiles')
+          .update({ focus: focus })
+          .eq('id', userId);
+        if (error) throw error;
+      } else {
+        throw err;
+      }
+    }
   },
 
   updatePersonalityCalibration: async (userId: string, calibration: PersonalityCalibration) => {
     checkConfig();
-    const { error } = await supabase!
-      .from('profiles')
-      .update({ personality_calibration: calibration })
-      .eq('id', userId);
-    if (error) throw error;
+    // Try personality_calibration first, then personality as fallback
+    try {
+      const { error } = await supabase!
+        .from('profiles')
+        .update({ personality_calibration: calibration })
+        .eq('id', userId);
+      if (error) throw error;
+    } catch (err: any) {
+      if (err.message?.includes('personality_calibration')) {
+        const { error } = await supabase!
+          .from('profiles')
+          .update({ personality: calibration })
+          .eq('id', userId);
+        if (error) throw error;
+      } else {
+        throw err;
+      }
+    }
   },
 
   signInWithSocial: async (provider: 'google' | 'apple') => {
@@ -191,8 +216,8 @@ export const storageService = {
       role: d.role as UserRole, 
       coachId: d.coach_id, 
       birthDate: d.birth_date, 
-      trainingFocus: d.training_focus,
-      personalityCalibration: d.personality_calibration as PersonalityCalibration
+      trainingFocus: (d.training_focus || d.focus) as TrainingFocus,
+      personalityCalibration: (d.personality_calibration || d.personality || d.reporting_style) as PersonalityCalibration
     }));
   },
 
