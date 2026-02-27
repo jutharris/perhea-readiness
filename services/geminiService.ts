@@ -12,40 +12,111 @@ const getAIInstance = () => {
 
 /**
  * Analyzes individual athlete wellness data using a Turbulence Model (Multivariate Decoupling).
- * Uses a 50-day baseline to establish "Normal Regimes."
+ * Uses a progressive baseline to establish "Normal Regimes."
  */
-export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE') => {
-  if (entries.length < 5) return "Establishing your 50-day performance baseline. Continue consistent reporting.";
+export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE', systemInstruction?: string) => {
+  if (entries.length === 0) return "Starting your performance audit. Sharp insights begin on Day 2.";
   
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
   
-  // Ingest up to 50 days of history to find long-term correlations
-  const contextData = entries.slice(0, 50);
+  // Progressive Lookback Logic
+  const entryCount = entries.length;
+  let lookback = 50;
+  let calibrationNote = "";
+  
+  if (entryCount <= 7) {
+    lookback = entryCount;
+    calibrationNote = "System is in Initial Calibration Mode. Insights get sharper every week.";
+  } else if (entryCount <= 15) {
+    lookback = 7;
+  } else if (entryCount <= 29) {
+    lookback = 14;
+  } else if (entryCount <= 51) {
+    lookback = 28;
+  }
+  
+  const contextData = entries.slice(0, lookback);
   
   const prompt = `
-    Act as a Performance Scientist specializing in Multivariate Turbulence Models (Mahalanobis Distance logic).
-    Review the last 50 entries of athlete data: ${JSON.stringify(contextData)}.
+    Act as a Performance Scientist specializing in Multivariate Turbulence Models.
+    Review the last ${lookback} entries of athlete data: ${JSON.stringify(contextData)}.
     
+    CURRENT CALIBRATION PHASE: ${calibrationNote || "Full Baseline Established."}
+
     CORE OBJECTIVE: 
     Identify "Biological Turbulence"—when the historical relationship (correlation) between metrics breaks. 
     Focus on "Decoupling" rather than just low scores.
 
     PATTERN RECOGNITION PARAMETERS:
-    1. THE 50-DAY BASELINE: Establish what "Normal" looks like. For this athlete, do Energy and Soreness usually move together? 
+    1. THE BASELINE: Establish what "Normal" looks like for this ${lookback}-day window.
     2. TURBULENCE DETECTION: 
-       - Look for "Decoupling": e.g., Energy drops significantly while Soreness remains "Fresh" (High). This is a classic "Biological Regime Shift" indicating systemic stress or early-stage illness.
+       - Look for "Decoupling": e.g., Energy drops significantly while Soreness remains "Fresh" (High). This indicates systemic stress.
        - Look for the "Menstrual Ghost": A specific 4-day decoupling of Stress/Sleep Quality vs. Energy prior to a cycle start.
     3. THE "SUBTLE" PHILOSOPHY: 
        - No "Danger" or "Alerts." 
-       - Use "iPhone-style" clarity: subtle, professional, and slightly addictive because it's so accurate.
-       - Provide "Permission to Rest" if turbulence is high and scores are dropping.
-       - Provide "Confidence to Push" if metrics are stable despite high load.
+       - Use "iPhone-style" clarity: subtle, professional.
+       - Provide "Permission to Rest" if turbulence is high.
+       - Provide "Confidence to Push" if metrics are stable.
 
     OUTPUT STYLE:
     - 2 sentences of high-density insight.
-    - Avoid technical jargon like "Mahalanobis" or "Covariance" in the output to the athlete. 
+    - Avoid technical jargon.
     - Use the role context: ${role}.
+    ${calibrationNote ? `- Acknowledge that you are still calibrating but provide the best insight possible.` : ""}
+  `;
+
+  try {
+    const response = await ai.models.generateContent({ 
+      model: "gemini-3-flash-preview", 
+      contents: prompt,
+      config: systemInstruction ? { systemInstruction } : undefined
+    });
+    return response.text || "Metrics are within your adaptive range.";
+  } catch (error) {
+    console.error("Gemini Analysis Error:", error);
+    return "Maintaining stable protocol based on current metrics.";
+  }
+};
+
+/**
+ * Handles athlete interaction with the AI Assistant Coach.
+ */
+export const getAthleteInteraction = async (
+  entries: WellnessEntry[], 
+  type: 'EXPLAIN_LOGIC' | 'ADD_CONTEXT' | 'DATA_QUERY',
+  userMessage?: string,
+  personalityCalibration: string = 'BALANCED'
+) => {
+  const ai = getAIInstance();
+  if (!ai) return "Interaction offline.";
+
+  const entryCount = entries.length;
+  const lookback = entryCount > 50 ? 50 : entryCount;
+  const contextData = entries.slice(0, lookback);
+
+  let specificInstruction = "";
+  if (type === 'EXPLAIN_LOGIC') {
+    specificInstruction = "Explain the specific biological logic behind the current regime classification. Reference the volatility or decoupling of specific metrics in the data.";
+  } else if (type === 'ADD_CONTEXT') {
+    specificInstruction = `The athlete has provided additional context: "${userMessage}". Acknowledge this context and explain how it might explain the current biological turbulence or why the system should adjust its sensitivity.`;
+  } else if (type === 'DATA_QUERY') {
+    specificInstruction = `The athlete asked a specific data question: "${userMessage}". Answer this question using the provided longitudinal data. Focus on trends, averages, and correlations.`;
+  }
+
+  const prompt = `
+    Act as an AI Assistant Coach for a high-performance athlete.
+    Data Context (last ${lookback} days): ${JSON.stringify(contextData)}
+    Athlete Personality: ${personalityCalibration}
+
+    TASK: ${specificInstruction}
+
+    BOUNDARIES:
+    - DO NOT suggest training changes (e.g., "run less", "skip your session").
+    - DO NOT provide medical advice.
+    - Focus strictly on System State and Biological Trends.
+    - If asked about training strategy, defer to their human coach but provide biological context.
+    - Keep it concise (2-4 sentences).
   `;
 
   try {
@@ -53,10 +124,10 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
       model: "gemini-3-flash-preview", 
       contents: prompt 
     });
-    return response.text || "Metrics are within your 50-day adaptive range.";
+    return response.text || "I'm processing your data. Please try again.";
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    return "Maintaining stable protocol based on current readiness.";
+    console.error("Gemini Interaction Error:", error);
+    return "I'm having trouble accessing your longitudinal data right now.";
   }
 };
 
