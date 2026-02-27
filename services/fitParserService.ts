@@ -1,3 +1,4 @@
+
 import FitParser from 'fit-file-parser';
 import pako from 'pako';
 
@@ -73,7 +74,7 @@ export const fitParserService = {
     });
   },
 
-  analyzeTreadmillRun: (fitData: any, fileName: string) => {
+  analyzeTreadmillRun: (fitData: any, fileName: string, targetHr: number) => {
     const records: FitRecord[] = fitData.records || [];
     const laps: FitLap[] = fitData.laps || [];
 
@@ -105,8 +106,8 @@ export const fitParserService = {
         elapsed_end_sec: getElapsedSeconds(end, fileStart),
         elapsed_start_mmss: formatMMSS(getElapsedSeconds(start, fileStart)),
         elapsed_end_mmss: formatMMSS(getElapsedSeconds(end, fileStart)),
-        split_time_sec: splitSec,
-        split_time_mmss: formatMMSS(splitSec),
+        split_time_sec: split_sec,
+        split_time_mmss: formatMMSS(split_sec),
         hr_avg: hrAvg,
         cad_avg: cadAvg,
       };
@@ -115,6 +116,12 @@ export const fitParserService = {
     const splitSecs = miles.map(m => m.split_time_sec);
     const hr1 = miles[0].hr_avg;
     const hr3 = miles[2].hr_avg;
+    const avgHr = miles.reduce((acc, m) => acc + (m.hr_avg || 0), 0) / miles.length;
+    
+    const hrDiff = Math.abs(avgHr - targetHr);
+    let compliance = 'COMPLIANT';
+    if (hrDiff >= 5) compliance = 'NON_COMPLIANT';
+    else if (hrDiff >= 4) compliance = 'WARNING';
 
     return {
       testType: "treadmill_run_3mi_lap",
@@ -129,6 +136,10 @@ export const fitParserService = {
         split_range_sec: Math.max(...splitSecs) - Math.min(...splitSecs),
         split_range_mmss: formatMMSS(Math.max(...splitSecs) - Math.min(...splitSecs)),
         hr_drift_m1_to_m3: (hr1 !== null && hr3 !== null) ? hr3 - hr1 : null,
+        hr_avg: avgHr,
+        target_hr: targetHr,
+        compliance: compliance,
+        hr_diff: hrDiff
       },
       data: miles
     };
@@ -138,6 +149,9 @@ export const fitParserService = {
     const records: FitRecord[] = fitData.records || [];
     if (records.length === 0) throw new Error("No record data found in FIT.");
 
+    // Resample/Ensure 1s resolution (simplified: just use records as is if they are dense)
+    // For a more robust version, we'd interpolate, but let's stick to the logic for now.
+    
     let startIdx = -1;
     const windowLen = DEFAULT_TEST_MINUTES * 60;
 
@@ -145,6 +159,7 @@ export const fitParserService = {
       let run = 0;
       let candidateIdx = -1;
       
+      // Find candidate start: stable HR for 60s while pedaling
       for (let j = i; j < records.length; j++) {
         const r = records[j];
         const hr = r.heart_rate || 0;
@@ -166,11 +181,13 @@ export const fitParserService = {
       }
 
       if (candidateIdx !== -1) {
+        // Validate next 30 mins
         const testEndIdx = candidateIdx + windowLen;
         if (testEndIdx >= records.length) break;
 
         const seg = records.slice(candidateIdx, testEndIdx);
         
+        // Stop detection
         let stopRun = 0;
         let stoppedTooLong = false;
         for (const r of seg) {
@@ -190,6 +207,7 @@ export const fitParserService = {
           continue;
         }
 
+        // Compliance
         const inBandCount = seg.filter(r => {
           const hr = r.heart_rate || 0;
           return hr >= (targetHr - DEFAULT_BAND_BPM) && hr <= (targetHr + DEFAULT_BAND_BPM);
@@ -247,6 +265,12 @@ export const fitParserService = {
     const eff3 = segments[2].eff_power_per_hr;
     const effChangePct = (eff1 && eff3 && eff1 !== 0) ? ((eff3 - eff1) / eff1) * 100 : null;
 
+    const avgHr = testRecords.reduce((a, b) => a + (b.heart_rate || 0), 0) / testRecords.length;
+    const hrDiff = Math.abs(avgHr - targetHr);
+    let compliance = 'COMPLIANT';
+    if (hrDiff >= 5) compliance = 'NON_COMPLIANT';
+    else if (hrDiff >= 4) compliance = 'WARNING';
+
     return {
       testType: "bike_hr_submax_30min_3x10",
       sport: "bike",
@@ -258,8 +282,11 @@ export const fitParserService = {
       elapsedEndSec: getElapsedSeconds(testEndTs, fileStart),
       summary: {
         eff_change_pct_seg3_vs_seg1: effChangePct,
-        hr_avg: testRecords.reduce((a, b) => a + (b.heart_rate || 0), 0) / testRecords.length,
+        hr_avg: avgHr,
         power_avg: testRecords.reduce((a, b) => a + (b.power || 0), 0) / testRecords.length,
+        target_hr: targetHr,
+        compliance: compliance,
+        hr_diff: hrDiff
       },
       data: segments
     };
