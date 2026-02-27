@@ -377,7 +377,9 @@ export const storageService = {
       { key: 'energy', label: 'Energy' },
       { key: 'stress', label: 'Stress' },
       { key: 'soreness', label: 'Soreness' },
-      { key: 'social', label: 'Mood' }
+      { key: 'social', label: 'Mood' },
+      { key: 'sleepHours', label: 'Sleep Hours' },
+      { key: 'lastSessionRPE', label: 'sRPE' }
     ];
 
     // Adjust volatility thresholds based on personality calibration
@@ -404,7 +406,9 @@ export const storageService = {
 
       return {
         ...m,
-        avg: (avg / 7) * 100,
+        avg: (avg / (m.key === 'sleepHours' ? 12 : (m.key === 'lastSessionRPE' ? 10 : 7))) * 100,
+        mean: avg,
+        stdDev,
         volatility: stdDev,
         status
       };
