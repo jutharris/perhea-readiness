@@ -15,7 +15,7 @@ const getAIInstance = () => {
  * Uses a progressive baseline to establish "Normal Regimes."
  */
 export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE', systemInstruction?: string) => {
-  if (entries.length === 0) return "Starting your performance audit. Sharp insights begin on Day 2.";
+  if (entries.length === 0) return "Your insights get sharper every week. Keep reporting!";
   
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
