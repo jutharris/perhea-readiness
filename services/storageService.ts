@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { User, WellnessEntry, UserRole, ReadinessStatus, SubmaxTest } from '../types';
+import { User, WellnessEntry, UserRole, Regime, SubmaxTest } from '../types';
 
 const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
@@ -271,15 +271,47 @@ export const storageService = {
     }));
   },
 
-  calculateReadiness: (entries: WellnessEntry[], entryIndex: number = 0) => {
-    if (entries.length <= entryIndex) return { status: 'READY' as ReadinessStatus, score: 0, trend: 'STABLE', acwr: 1.0 };
-    const latest = entries[entryIndex];
-    const avg = (latest.energy + latest.soreness + latest.sleepQuality + latest.stress + latest.social) / 5;
-    const score = Math.round((avg / 7) * 100);
-    let status: ReadinessStatus = 'READY';
-    if (score < 40 || latest.injured || latest.feelingSick || latest.menstrualCycle) status = 'RECOVERY';
-    else if (score < 65) status = 'MINDFUL';
-    return { status, score, trend: 'STABLE', acwr: 1.0 };
+  calculateRegime: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED') => {
+    if (entries.length === 0) return { status: 'ADAPT' as Regime, reason: 'Establishing Baseline' };
+    
+    const latest = entries[0];
+    const stats = storageService.calculateMetricStats(entries, 28, calibration);
+    const correlations = storageService.calculateCorrelations(entries, 21);
+    
+    const avgWellness = stats.reduce((acc, s) => acc + s.avg, 0) / stats.length;
+    const highVolatility = stats.some(s => s.status === 'VOLATILE');
+    const moderateVolatility = stats.some(s => s.status === 'MODERATE');
+    const negativeTrends = correlations && correlations.length > 0;
+
+    // 1. CAUTION: High turbulence or acute issues
+    if (latest.injured || latest.feelingSick || highVolatility) {
+      return { 
+        status: 'CAUTION' as Regime, 
+        reason: latest.injured ? 'Injury Detected' : latest.feelingSick ? 'Illness Detected' : 'High System Turbulence' 
+      };
+    }
+
+    // 2. RESTORATION: Drifting metrics or low average
+    if (avgWellness < 60 || negativeTrends || moderateVolatility) {
+      return { 
+        status: 'RESTORATION' as Regime, 
+        reason: negativeTrends ? 'Negative Trend Detected' : 'Recovery Deficit' 
+      };
+    }
+
+    // 3. BUILD: High stability and high wellness
+    if (avgWellness > 80 && !moderateVolatility && !negativeTrends) {
+      return { 
+        status: 'BUILD' as Regime, 
+        reason: 'Optimal Resilience' 
+      };
+    }
+
+    // 4. ADAPT: Productive absorption of load
+    return { 
+      status: 'ADAPT' as Regime, 
+      reason: 'Stable Adaptation' 
+    };
   },
 
   calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21) => {
