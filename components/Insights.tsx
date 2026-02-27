@@ -62,8 +62,14 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
     setInteractionLoading(true);
     setInteractionResponse(null);
     try {
-      const res = await getAthleteInteraction(entries, type, message, personalityCalibration);
-      setInteractionResponse(res);
+      const resJson = await getAthleteInteraction(entries, type, message, personalityCalibration);
+      const res = JSON.parse(resJson);
+      setInteractionResponse(res.text);
+      if (res.inflectionPoint) {
+        localStorage.setItem('ai_inflection_point', JSON.stringify(res.inflectionPoint));
+        // Dispatch custom event to notify Trends tab
+        window.dispatchEvent(new CustomEvent('ai_inflection_updated'));
+      }
       setShowInput(null);
       setUserInput('');
     } catch (err) {
