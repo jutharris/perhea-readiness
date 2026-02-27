@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, WellnessEntry, SubmaxTest, TrainingFocus } from '../types';
+import { User, WellnessEntry, SubmaxTest, TrainingFocus, PersonalityCalibration } from '../types';
 import Dashboard from './Dashboard';
 import Insights from './Insights';
 import { storageService } from '../services/storageService';
@@ -44,6 +44,15 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     }
   };
 
+  const updateCalibration = async (calibration: PersonalityCalibration) => {
+    try {
+      await storageService.updatePersonalityCalibration(athlete.id, calibration);
+      setAthlete({ ...athlete, personalityCalibration: calibration });
+    } catch (err) {
+      alert("Failed to update reporting style");
+    }
+  };
+
   const send = async () => { 
     await storageService.saveAdjustment(athlete.id, coachId, msg); 
     setMsg(''); 
@@ -51,7 +60,12 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   };
 
   const getTestAnalysis = (test: SubmaxTest, index: number) => {
-    const prevTest = tests[index + 1];
+    const compliance = test.summary?.compliance || 'COMPLIANT';
+    if (compliance === 'NON_COMPLIANT') {
+      return { change: 0, label: 'INVALID TEST', color: 'text-rose-400' };
+    }
+
+    const prevTest = tests.slice(index + 1).find(t => (t.summary?.compliance || 'COMPLIANT') !== 'NON_COMPLIANT');
     if (!prevTest) return { change: 0, label: 'BASELINE', color: 'text-slate-400' };
 
     let change = 0;
@@ -60,9 +74,9 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       const prevTotal = prevTest.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
       change = ((prevTotal - currentTotal) / prevTotal) * 100; // Positive is faster
     } else {
-      const currentEff = test.summary?.power_avg / test.summary?.hr_avg;
-      const prevEff = prevTest.summary?.power_avg / prevTest.summary?.hr_avg;
-      change = ((currentEff - prevEff) / prevEff) * 100; // Positive is more efficient
+      const currentEff = test.summary?.power_avg;
+      const prevEff = prevTest.summary?.power_avg;
+      change = ((currentEff - prevEff) / prevEff) * 100; // Positive is more efficient (higher power at same HR)
     }
 
     const focus = athlete.trainingFocus;
@@ -106,7 +120,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         const totalSec = t.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
         return { total: totalSec, hr: t.summary?.hr_avg, gap: t.summary?.split_range_sec };
       }
-      return { total: t.summary?.power_avg / t.summary?.hr_avg, hr: t.summary?.hr_avg, gap: t.summary?.eff_change_pct_seg3_vs_seg1 };
+      return { total: t.summary?.power_avg, hr: t.summary?.hr_avg, gap: t.summary?.eff_change_pct_seg3_vs_seg1 };
     };
 
     const mA = getMetrics(testA);
@@ -144,23 +158,52 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                 )}
               </div>
             )}
-            {athlete.trainingFocus && (
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
-                Focus: {athlete.trainingFocus.replace('_', ' ')}
-              </span>
-            )}
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
+              Focus: {athlete.trainingFocus?.replace('_', ' ') || 'NONE'}
+            </span>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded">
+              Style: {athlete.personalityCalibration || 'BALANCED'}
+            </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
-            <button
-              key={f}
-              onClick={() => updateFocus(f)}
-              className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${athlete.trainingFocus === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-            >
-              {f.replace('_', ' ')}
-            </button>
-          ))}
+      </div>
+
+      {/* Athlete Configuration Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Reporting Style</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-4">Calibrate AI & Volatility Sensitivity</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(['STOIC', 'BALANCED', 'EXPRESSIVE'] as PersonalityCalibration[]).map(c => (
+              <button
+                key={c}
+                onClick={() => updateCalibration(c)}
+                className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${athlete.personalityCalibration === c ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'}`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Submax Focus</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-4">Define Primary Adaptation Goal</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
+              <button
+                key={f}
+                onClick={() => updateFocus(f)}
+                className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border-2 ${athlete.trainingFocus === f ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
+              >
+                {f.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       
@@ -180,7 +223,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                 <p className="text-xs font-bold">{new Date(comparisonData.testA.createdAt).toLocaleDateString()}</p>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Efficiency</span>
+                    <span className="opacity-60">Aerobic Floor</span>
                     <span className="font-black">{comparisonData.mA.total.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -197,7 +240,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                 <p className="text-xs font-bold">{new Date(comparisonData.testB.createdAt).toLocaleDateString()}</p>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Efficiency</span>
+                    <span className="opacity-60">Aerobic Floor</span>
                     <span className="font-black">{comparisonData.mB.total.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -261,7 +304,13 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 px-2 py-1 rounded uppercase tracking-widest">{test.sport}</span>
                       <p className="text-xs font-bold text-slate-500">{new Date(test.createdAt).toLocaleDateString()}</p>
-                      {idx > 0 && (
+                      {test.summary?.compliance === 'WARNING' && (
+                        <span className="text-[8px] font-black bg-amber-100 text-amber-600 px-2 py-1 rounded uppercase tracking-widest">Protocol Warning</span>
+                      )}
+                      {test.summary?.compliance === 'NON_COMPLIANT' && (
+                        <span className="text-[8px] font-black bg-rose-100 text-rose-600 px-2 py-1 rounded uppercase tracking-widest">Invalid Protocol</span>
+                      )}
+                      {idx > 0 && test.summary?.compliance !== 'NON_COMPLIANT' && (
                         <button 
                           onClick={() => setComparisonId(test.id)}
                           className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
@@ -284,14 +333,14 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                       <p className="text-sm font-black text-slate-900">{Math.round(test.summary?.hr_avg || 0)} <span className="text-[10px] opacity-40">bpm</span></p>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Avg {test.sport === 'bike' ? 'Power' : 'Pace'}</p>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Floor</p>
                       <p className="text-sm font-black text-slate-900">
                         {test.sport === 'bike' ? Math.round(test.summary?.power_avg || 0) : test.summary?.split_range_mmss}
                         <span className="text-[10px] opacity-40"> {test.sport === 'bike' ? 'W' : ''}</span>
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Efficiency Gap</p>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Drift</p>
                       <p className="text-sm font-black text-slate-900">
                         {test.sport === 'bike' ? 
                           `${Math.abs(test.summary?.eff_change_pct_seg3_vs_seg1 || 0).toFixed(1)}%` : 
@@ -312,8 +361,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         </div>
       )}
 
-      <Insights entries={entries} role="COACH" />
-      
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-4">
         <h3 className="font-bold">Protocol Update</h3>
         <textarea value={msg} onChange={e => setMsg(e.target.value)} placeholder="Send guidance..." className="w-full h-32 p-4 bg-slate-50 rounded-2xl outline-none" />
