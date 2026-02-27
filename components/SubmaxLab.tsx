@@ -28,7 +28,6 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
 
       {tests.length === 0 ? (
         <div className="bg-white p-12 rounded-[3rem] border border-slate-100 shadow-xl text-center space-y-8">
-          <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner">🔬</div>
           <div className="space-y-4 max-w-md mx-auto">
             <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Calibrate Your Engine</h3>
             <p className="text-sm font-medium text-slate-500 leading-relaxed">
@@ -58,7 +57,6 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
         <div className="space-y-6">
           <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-4 border border-white/5">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">📊</span>
               <h3 className="text-lg font-black uppercase tracking-widest">Lab Status: Mission Control</h3>
             </div>
             <p className="text-sm font-medium opacity-70 leading-relaxed">
@@ -74,9 +72,6 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
               return (
                 <div key={test.id} className={`bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-colors ${isNonCompliant ? 'opacity-60' : ''}`}>
                   <div className="flex items-center gap-6">
-                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-indigo-50 transition-colors">
-                      {test.sport === 'run' ? '🏃' : '🚴'}
-                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(test.createdAt).toLocaleDateString()}</p>
@@ -111,7 +106,7 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
       <div className="p-8 bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100/50">
         <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 italic">Lab Note</p>
         <p className="text-xs font-bold text-indigo-700 leading-relaxed">
-          Calibration tests are best performed in a rested state (Readiness &gt; 80%) to ensure the data reflects your true aerobic ceiling.
+          Calibration tests are best performed in a rested state (BUILD or ADAPT regime) to ensure the data reflects your true aerobic ceiling.
         </p>
       </div>
     </div>
