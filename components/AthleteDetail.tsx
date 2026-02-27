@@ -164,7 +164,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
           </div>
         </div>
       )}
-      <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
+      <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">Back</button>
       
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <div className="space-y-1">
@@ -233,7 +233,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl animate-in zoom-in-95 duration-500">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-black uppercase tracking-widest">Longitudinal Comparison</h3>
-            <button onClick={() => setComparisonId(null)} className="text-white/40 hover:text-white">✕</button>
+            <button onClick={() => setComparisonId(null)} className="text-[10px] font-black text-white/40 hover:text-white uppercase tracking-widest">Close</button>
           </div>
           
           <div className="grid grid-cols-2 gap-8">
@@ -284,7 +284,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       {coachBrief && coachBrief.length > 0 && (
         <div className="bg-indigo-900 p-8 rounded-[2.5rem] text-white space-y-4 shadow-2xl">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🧠</span>
             <h3 className="text-lg font-black uppercase tracking-widest">Coach Brief: Covariance Detected</h3>
           </div>
           <p className="text-sm font-medium opacity-80 leading-relaxed">
@@ -308,7 +307,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       
       {tests.length === 0 && (
         <div className="bg-white p-10 rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center space-y-4">
-          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-xl">🔬</div>
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No Submax Data Yet</p>
           <button 
             onClick={() => setShowUpload(true)}
