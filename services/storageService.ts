@@ -1,5 +1,6 @@
+
 import { supabase } from './supabaseClient';
-import { User, WellnessEntry, UserRole, ReadinessStatus, SubmaxTest, PersonalityCalibration } from '../types';
+import { User, WellnessEntry, UserRole, ReadinessStatus, SubmaxTest } from '../types';
 
 const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
@@ -45,7 +46,7 @@ export const storageService = {
       first_name: firstName,
       last_name: lastName,
       role: role,
-      birth_date: birthDate
+      birth_date: birthDate || null
     };
 
     if (role === 'COACH') {
