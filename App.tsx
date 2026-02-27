@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
@@ -9,9 +10,10 @@ import Onboarding from './components/Onboarding';
 import SubmaxTestUpload from './components/SubmaxTestUpload';
 import Trends from './components/Trends';
 import SubmaxLab from './components/SubmaxLab';
+import AuditProcessingOverlay from './components/AuditProcessingOverlay';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
-import { User, WellnessEntry, View, UserRole, SubmaxTest } from './types';
+import { User, WellnessEntry, View, UserRole } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -30,7 +32,7 @@ const App: React.FC = () => {
   const [isBooting, setIsBooting] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showGoldStar, setShowGoldStar] = useState(false);
+  const [auditProcessingStep, setAuditProcessingStep] = useState<'LOADING' | 'COMPARING' | null>(null);
 
   const getAthleteDay = (date: Date) => {
     const d = new Date(date);
@@ -108,7 +110,10 @@ const App: React.FC = () => {
           setShowInviteCard(true);
         }
       } else {
+        // AUTHENTICATED BUT NO PROFILE: Route to onboarding
         const metadata = session.user.user_metadata || {};
+        
+        // Smart name extraction from social providers
         let firstName = metadata.given_name || metadata.first_name || '';
         let lastName = metadata.family_name || metadata.last_name || '';
         
@@ -142,6 +147,7 @@ const App: React.FC = () => {
     }
 
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+      console.log(`Auth Event: ${event}`);
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         handleAuthChange(session);
       } else if (event === 'SIGNED_OUT') {
@@ -191,6 +197,7 @@ const App: React.FC = () => {
         setAuthMode('EMAIL_LOGIN');
       } else {
         await storageService.signIn(authForm.email, authForm.password);
+        // handleAuthChange will trigger automatically via listener
       }
     } catch (err: any) {
       alert(err.message);
@@ -220,7 +227,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-[400px] text-center space-y-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100 mb-6">P</div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Elite Performance Monitor</h1>
-          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness platform keeping athletes healthy, performing, and aging athletically.</p>
+          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol for athletes and coaches.</p>
           
           <div className="pt-10 space-y-3">
             <button disabled={actionLoading} onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
@@ -271,19 +278,8 @@ const App: React.FC = () => {
       )}
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {showGoldStar && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-sm">
-              <style>{`
-                @keyframes star-pulse {
-                  0%, 100% { transform: scale(1); opacity: 1; }
-                  50% { transform: scale(1.5); opacity: 0.8; }
-                }
-                .animate-star {
-                  animation: star-pulse 0.6s ease-in-out 3;
-                }
-              `}</style>
-              <div className="text-8xl animate-star">⭐</div>
-            </div>
+          {auditProcessingStep && (
+            <AuditProcessingOverlay step={auditProcessingStep} />
           )}
           
           {user.role === 'ATHLETE' && !hasSubmittedToday ? (
@@ -350,12 +346,16 @@ const App: React.FC = () => {
         <WellnessForm 
           user={user} 
           onComplete={async () => { 
-            setShowGoldStar(true);
+            setAuditProcessingStep('LOADING');
+            setTimeout(() => {
+              setAuditProcessingStep('COMPARING');
+            }, 1500);
+            
             setTimeout(async () => {
-              setShowGoldStar(false);
+              setAuditProcessingStep(null);
               await refreshData(user); 
               setActiveView('DASHBOARD'); 
-            }, 2000);
+            }, 3500);
           }} 
         />
       )}
