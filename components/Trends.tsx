@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { WellnessEntry, User } from '../types';
 import { storageService } from '../services/storageService';
@@ -12,17 +13,23 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
   const chartData = useMemo(() => {
     if (entries.length === 0) return [];
     const sortedEntries = [...entries].reverse();
+    
+    const getWellnessScore = (entry: WellnessEntry) => {
+      const avg = (entry.energy + entry.soreness + entry.sleepQuality + entry.stress + entry.social) / 5;
+      return Math.round((avg / 7) * 100);
+    };
+
     return sortedEntries.map((_, index, array) => {
       const subset = array.slice(0, index + 1);
       const getRollingAvg = (days: number) => {
         const slice = subset.slice(-days);
-        const sum = slice.reduce((acc, curr) => acc + storageService.calculateReadiness([curr]).score, 0);
+        const sum = slice.reduce((acc, curr) => acc + getWellnessScore(curr), 0);
         return Math.round(sum / slice.length);
       };
       const date = new Date(array[index].isoDate);
       return {
         date: `${date.getMonth() + 1}/${date.getDate()}`,
-        readiness: storageService.calculateReadiness([array[index]]).score,
+        wellness: getWellnessScore(array[index]),
         avg7: getRollingAvg(7),
         avg28: getRollingAvg(28)
       };
@@ -30,13 +37,20 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
   }, [entries]);
 
   const metricStats = useMemo(() => {
-    const stats = storageService.calculateMetricStats(entries);
+    const stats = storageService.calculateMetricStats(entries, 28, user.personalityCalibration);
+    
+    // Foundation: Sleep, Energy, Stress
     const foundationKeys = ['sleepQuality', 'energy', 'stress'];
     const foundation = stats.filter(s => foundationKeys.includes(s.key as string));
+    
+    // Wildcards: Soreness, Mood
     const wildcardCandidates = stats.filter(s => !foundationKeys.includes(s.key as string));
+    
+    // Pick the most volatile wildcard (or just the first if none are volatile)
     const wildcards = wildcardCandidates
       .sort((a, b) => b.volatility - a.volatility)
-      .slice(0, 1);
+      .slice(0, 1); // For now, just one wildcard
+
     return [...foundation, ...wildcards];
   }, [entries]);
 
@@ -50,7 +64,7 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-left">
         <div className="mb-6 flex justify-between items-end">
           <div>
-            <h3 className="text-lg font-black text-slate-900">Readiness Trends</h3>
+            <h3 className="text-lg font-black text-slate-900">System Wellness Trends</h3>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Biological Rhythm</p>
           </div>
           <div className="text-right">
@@ -62,17 +76,61 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-              <Tooltip cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700}} />
-              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{paddingBottom: '20px', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'}} />
-              <Line name="Short Term (7d)" type="monotone" dataKey="avg7" stroke="#4f46e5" strokeWidth={4} dot={false} animationDuration={1500} />
-              <Line name="Baseline (28d)" type="monotone" dataKey="avg28" stroke="#cbd5e1" strokeWidth={2} strokeDasharray="4 4" dot={false} animationDuration={2000} />
+              <XAxis 
+                dataKey="date" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}}
+              />
+              <YAxis 
+                domain={[0, 100]} 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}}
+              />
+              <Tooltip 
+                cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
+                contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700}}
+              />
+              <Legend 
+                verticalAlign="top" 
+                align="right" 
+                iconType="circle" 
+                wrapperStyle={{paddingBottom: '20px', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em'}} 
+              />
+              <Line 
+                name="Daily Wellness" 
+                type="monotone" 
+                dataKey="wellness" 
+                stroke="#cbd5e1" 
+                strokeWidth={1} 
+                dot={{ r: 2, fill: '#cbd5e1' }}
+                animationDuration={1000}
+              />
+              <Line 
+                name="Short Term (7d)" 
+                type="monotone" 
+                dataKey="avg7" 
+                stroke="#4f46e5" 
+                strokeWidth={4} 
+                dot={false}
+                animationDuration={1500}
+              />
+              <Line 
+                name="Baseline (28d)" 
+                type="monotone" 
+                dataKey="avg28" 
+                stroke="#94a3b8" 
+                strokeWidth={2} 
+                strokeDasharray="4 4"
+                dot={false}
+                animationDuration={2000}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
         <p className="mt-6 text-[11px] text-slate-400 font-medium leading-relaxed italic border-t border-slate-50 pt-4">
-          *Wisdom: Waves in your readiness are a sign of healthy adaptation. A flat line often indicates stagnation or lack of stimulus.
+          *Wisdom: Waves in your wellness metrics are a sign of healthy adaptation. A flat line often indicates stagnation or lack of stimulus.
         </p>
       </div>
 
@@ -87,7 +145,10 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
                   <span className={`${m.status === 'VOLATILE' ? 'text-rose-500' : 'text-slate-400'}`}>{m.status}</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                  <div className={`h-full transition-all duration-1000 ${m.status === 'VOLATILE' ? 'bg-rose-500' : 'bg-indigo-600'}`} style={{ width: `${m.avg}%` }}></div>
+                  <div 
+                    className={`h-full transition-all duration-1000 ${m.status === 'VOLATILE' ? 'bg-rose-500' : 'bg-indigo-600'}`}
+                    style={{ width: `${m.avg}%` }}
+                  ></div>
                 </div>
               </div>
             ))}
