@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
@@ -268,6 +269,9 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       hideNav={user?.role === 'ATHLETE' && !hasSubmittedToday}
     >
+      {auditProcessingStep && (
+        <AuditProcessingOverlay step={auditProcessingStep} />
+      )}
       {activeView === 'ONBOARDING' && user && (
         <Onboarding user={user} onComplete={(updatedUser) => {
           setUser(updatedUser);
@@ -277,10 +281,6 @@ const App: React.FC = () => {
       )}
       {activeView === 'DASHBOARD' && user && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {auditProcessingStep && (
-            <AuditProcessingOverlay step={auditProcessingStep} />
-          )}
-          
           {user.role === 'ATHLETE' && !hasSubmittedToday ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 py-12">
               <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-4xl shadow-inner">📋</div>
@@ -346,14 +346,19 @@ const App: React.FC = () => {
           user={user} 
           onComplete={async () => { 
             setAuditProcessingStep('LOADING');
+            
+            // Start the data refresh immediately
+            const refreshPromise = refreshData(user);
+            
             setTimeout(() => {
               setAuditProcessingStep('COMPARING');
             }, 1500);
             
             setTimeout(async () => {
-              setAuditProcessingStep(null);
-              await refreshData(user); 
+              // Ensure data is refreshed before switching views
+              await refreshPromise;
               setActiveView('DASHBOARD'); 
+              setAuditProcessingStep(null);
             }, 3500);
           }} 
         />
