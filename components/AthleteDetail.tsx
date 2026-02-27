@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, WellnessEntry, SubmaxTest, TrainingFocus, PersonalityCalibration } from '../types';
 import Dashboard from './Dashboard';
 import Insights from './Insights';
+import SubmaxTestUpload from './SubmaxTestUpload';
 import { storageService } from '../services/storageService';
 
 const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachId, onBack }) => {
@@ -10,6 +11,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [tests, setTests] = useState<SubmaxTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [comparisonId, setComparisonId] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
   const athleteAge = useMemo(() => {
     if (!athlete.birthDate) return null;
@@ -21,17 +23,19 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     return age;
   }, [athlete.birthDate]);
 
+  const fetchTests = async () => {
+    setLoading(true);
+    try {
+      const data = await storageService.getSubmaxTestsForUser(athlete.id);
+      setTests(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTests = async () => {
-      try {
-        const data = await storageService.getSubmaxTestsForUser(athlete.id);
-        setTests(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchTests();
   }, [athlete.id]);
 
@@ -39,8 +43,9 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     try {
       await storageService.updateTrainingFocus(athlete.id, focus);
       setAthlete({ ...athlete, trainingFocus: focus });
-    } catch (err) {
-      alert("Failed to update focus");
+    } catch (err: any) {
+      console.error("Focus Update Error:", err);
+      alert("Failed to update focus: " + (err.message || "Unknown error"));
     }
   };
 
@@ -48,8 +53,9 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     try {
       await storageService.updatePersonalityCalibration(athlete.id, calibration);
       setAthlete({ ...athlete, personalityCalibration: calibration });
-    } catch (err) {
-      alert("Failed to update reporting style");
+    } catch (err: any) {
+      console.error("Calibration Update Error:", err);
+      alert("Failed to update reporting style: " + (err.message || "Unknown error"));
     }
   };
 
@@ -144,6 +150,20 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
 
   return (
     <div className="space-y-8">
+      {showUpload && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl">
+            <SubmaxTestUpload 
+              user={athlete} 
+              onComplete={() => {
+                setShowUpload(false);
+                fetchTests();
+              }} 
+              onCancel={() => setShowUpload(false)} 
+            />
+          </div>
+        </div>
+      )}
       <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back</button>
       
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -293,6 +313,12 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
               <h3 className="text-lg font-black text-slate-900">Submax Performance</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Objective Physiological Markers</p>
             </div>
+            <button 
+              onClick={() => setShowUpload(true)}
+              className="px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
+            >
+              Upload New Test
+            </button>
           </div>
           
           <div className="space-y-4">
