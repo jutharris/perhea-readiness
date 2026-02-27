@@ -1,6 +1,7 @@
+
 export type UserRole = 'ATHLETE' | 'COACH' | 'PENDING';
 export type SessionType = 'TRAINING' | 'COMPETITION' | 'TRAVEL' | 'REST';
-export type ReadinessStatus = 'READY' | 'MINDFUL' | 'RECOVERY';
+export type Regime = 'BUILD' | 'ADAPT' | 'RESTORATION' | 'CAUTION';
 export type PersonalityCalibration = 'STOIC' | 'BALANCED' | 'EXPRESSIVE';
 export type TrainingFocus = 'SPEED' | 'POWER' | 'STRENGTH' | 'AEROBIC_EFFICIENCY' | 'FREQUENCY' | 'VOLUME_TOLERANCE';
 
@@ -17,6 +18,7 @@ export interface User {
   personalityCalibration?: PersonalityCalibration;
 }
 
+// Added WellnessEntry interface to track daily athlete status and internal load metrics
 export interface WellnessEntry {
   id: string;
   userId: string;
@@ -50,7 +52,8 @@ export interface SubmaxTest {
   elapsedStartSec: number;
   elapsedEndSec: number;
   summary: any;
-  data: any;
+  data: any; // Stores the 'miles' or 'segments' array
   tags?: string[];
   createdAt: string;
 }
+
