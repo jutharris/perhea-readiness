@@ -1,18 +1,20 @@
+
 import React, { useMemo } from 'react';
 import { WellnessEntry } from '../types';
 import { storageService } from '../services/storageService';
 import Insights from './Insights';
 
 const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false }) => {
-  const readiness = storageService.calculateReadiness(entries);
+  const regime = storageService.calculateRegime(entries, user.personalityCalibration);
 
   const statusMap = {
-    'READY': { label: 'PRIME STATE', color: 'from-emerald-500/20 to-indigo-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'High Capacity for Work' },
-    'MINDFUL': { label: 'ADAPTIVE LOADING', color: 'from-amber-400/20 to-orange-500/20', text: 'text-amber-600', border: 'border-amber-100', sub: 'Body is Responding & Growing' },
-    'RECOVERY': { label: 'RESTORATION FOCUS', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'Prioritize Physical Support' }
+    'BUILD': { label: 'BUILD REGIME', color: 'from-emerald-500/20 to-emerald-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'Optimal Resilience & High Capacity', icon: '⚡' },
+    'ADAPT': { label: 'ADAPT REGIME', color: 'from-sky-400/20 to-indigo-500/20', text: 'text-sky-600', border: 'border-sky-100', sub: 'Productive Load Absorption', icon: '🌊' },
+    'RESTORATION': { label: 'RESTORATION', color: 'from-amber-400/20 to-orange-500/20', text: 'text-amber-600', border: 'border-amber-100', sub: 'System Pivot: Prioritize Support', icon: '🧘' },
+    'CAUTION': { label: 'CAUTION', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'High Turbulence: Regime Change Detected', icon: '⚠️' }
   };
 
-  const currentStatus = statusMap[readiness.status as keyof typeof statusMap] || statusMap.READY;
+  const currentStatus = statusMap[regime.status as keyof typeof statusMap] || statusMap.ADAPT;
 
   const focusArea = useMemo(() => {
     if (entries.length === 0) return null;
@@ -34,7 +36,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
       </div>
 
       <div className="px-4">
-        <Insights entries={entries} />
+        <Insights entries={entries} personalityCalibration={user.personalityCalibration} />
       </div>
 
       <div className="flex justify-center py-10 relative">
@@ -42,8 +44,8 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
           <div className={`w-64 h-64 rounded-full ${currentStatus.text.replace('text', 'bg')}`}></div>
         </div>
         <div className={`w-56 h-56 rounded-full flex flex-col items-center justify-center bg-white shadow-2xl border-8 ${currentStatus.border} relative z-10`}>
-          <span className={`text-6xl font-black ${currentStatus.text}`}>{readiness.score}%</span>
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Readiness</span>
+          <span className="text-7xl mb-2">{currentStatus.icon}</span>
+          <span className={`text-xs font-black uppercase tracking-[0.2em] ${currentStatus.text}`}>{regime.reason}</span>
         </div>
       </div>
       
@@ -52,7 +54,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
         <p className="text-xs font-black text-slate-500 uppercase tracking-widest">{currentStatus.sub}</p>
       </div>
 
-      {focusArea && readiness.score < 80 && (
+      {focusArea && regime.status !== 'BUILD' && (
         <div className="px-4">
           <div className="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] inline-flex items-center gap-4 border border-white/20 shadow-sm">
             <span className="text-2xl">✨</span>
