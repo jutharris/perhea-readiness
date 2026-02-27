@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { fitParserService } from '../services/fitParserService';
 import { storageService } from '../services/storageService';
@@ -50,7 +51,7 @@ const SubmaxTestUpload: React.FC<Props> = ({ user, onComplete, onCancel }) => {
       let analysis;
       
       if (mode === 'run') {
-        analysis = fitParserService.analyzeTreadmillRun(fitData, file.name);
+        analysis = fitParserService.analyzeTreadmillRun(fitData, file.name, targetHr);
       } else {
         analysis = fitParserService.analyzeBikeSubmax(fitData, file.name, targetHr);
       }
