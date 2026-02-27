@@ -220,7 +220,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-[400px] text-center space-y-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100 mb-6">P</div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Elite Performance Monitor</h1>
-          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol for athletes and coaches.</p>
+          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness platform keeping athletes healthy, performing, and aging athletically.</p>
           
           <div className="pt-10 space-y-3">
             <button disabled={actionLoading} onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
