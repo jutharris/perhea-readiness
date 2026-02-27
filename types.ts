@@ -38,6 +38,13 @@ export interface WellnessEntry {
   comments: string;
 }
 
+export type InteractionType = 'EXPLAIN_LOGIC' | 'ADD_CONTEXT' | 'DATA_QUERY';
+
+export interface InteractionResponse {
+  type: InteractionType;
+  text: string;
+}
+
 export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST';
 
 export interface SubmaxTest {
