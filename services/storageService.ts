@@ -271,12 +271,21 @@ export const storageService = {
     }));
   },
 
+  getLookbackDays: (entryCount: number) => {
+    if (entryCount <= 7) return entryCount;
+    if (entryCount <= 15) return 7;
+    if (entryCount <= 29) return 14;
+    if (entryCount <= 51) return 28;
+    return 50;
+  },
+
   calculateRegime: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED') => {
     if (entries.length === 0) return { status: 'ADAPT' as Regime, reason: 'Establishing Baseline' };
     
     const latest = entries[0];
-    const stats = storageService.calculateMetricStats(entries, 28, calibration);
-    const correlations = storageService.calculateCorrelations(entries, 21);
+    const lookbackDays = storageService.getLookbackDays(entries.length);
+    const stats = storageService.calculateMetricStats(entries, lookbackDays, calibration);
+    const correlations = storageService.calculateCorrelations(entries, lookbackDays);
     
     const avgWellness = stats.reduce((acc, s) => acc + s.avg, 0) / stats.length;
     const highVolatility = stats.some(s => s.status === 'VOLATILE');
