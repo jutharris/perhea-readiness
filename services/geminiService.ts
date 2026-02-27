@@ -97,11 +97,15 @@ export const getAthleteInteraction = async (
 
   let specificInstruction = "";
   if (type === 'EXPLAIN_LOGIC') {
-    specificInstruction = "Explain the specific biological logic behind the current regime classification. Reference the volatility or decoupling of specific metrics in the data.";
+    specificInstruction = `Explain the specific biological logic behind the current regime classification. Reference the volatility or decoupling of specific metrics in the data. 
+    ALSO, identify the exact date (YYYY-MM-DD) when the system turbulence or trend shift first became apparent for the primary driver metric. 
+    Format your response as a JSON object: { "text": "your explanation here", "inflectionPoint": { "metric": "metricKey", "date": "YYYY-MM-DD" } }`;
   } else if (type === 'ADD_CONTEXT') {
-    specificInstruction = `The athlete has provided additional context: "${userMessage}". Acknowledge this context and explain how it might explain the current biological turbulence or why the system should adjust its sensitivity.`;
+    specificInstruction = `The athlete has provided additional context: "${userMessage}". Acknowledge this context and explain how it might explain the current biological turbulence or why the system should adjust its sensitivity.
+    Format your response as a JSON object: { "text": "your response here" }`;
   } else if (type === 'DATA_QUERY') {
-    specificInstruction = `The athlete asked a specific data question: "${userMessage}". Answer this question using the provided longitudinal data. Focus on trends, averages, and correlations.`;
+    specificInstruction = `The athlete asked a specific data question: "${userMessage}". Answer this question using the provided longitudinal data. Focus on trends, averages, and correlations.
+    Format your response as a JSON object: { "text": "your answer here" }`;
   }
 
   const prompt = `
@@ -112,22 +116,23 @@ export const getAthleteInteraction = async (
     TASK: ${specificInstruction}
 
     BOUNDARIES:
-    - DO NOT suggest training changes (e.g., "run less", "skip your session").
+    - DO NOT suggest training changes.
     - DO NOT provide medical advice.
     - Focus strictly on System State and Biological Trends.
-    - If asked about training strategy, defer to their human coach but provide biological context.
     - Keep it concise (2-4 sentences).
+    - ALWAYS return valid JSON.
   `;
 
   try {
     const response = await ai.models.generateContent({ 
       model: "gemini-3-flash-preview", 
-      contents: prompt 
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
     });
-    return response.text || "I'm processing your data. Please try again.";
+    return response.text || JSON.stringify({ text: "I'm processing your data. Please try again." });
   } catch (error) {
     console.error("Gemini Interaction Error:", error);
-    return "I'm having trouble accessing your longitudinal data right now.";
+    return JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
   }
 };
 
