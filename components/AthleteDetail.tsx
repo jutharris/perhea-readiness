@@ -306,6 +306,19 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         </div>
       )}
       
+      {tests.length === 0 && (
+        <div className="bg-white p-10 rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center space-y-4">
+          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-xl">🔬</div>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No Submax Data Yet</p>
+          <button 
+            onClick={() => setShowUpload(true)}
+            className="px-8 py-4 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
+          >
+            Upload First Test
+          </button>
+        </div>
+      )}
+
       {tests.length > 0 && (
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-6">
           <div className="flex justify-between items-end">
