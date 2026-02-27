@@ -8,10 +8,10 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
   const regime = storageService.calculateRegime(entries, user.personalityCalibration);
 
   const statusMap = {
-    'BUILD': { label: 'BUILD REGIME', color: 'from-emerald-500/20 to-emerald-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'Optimal Resilience & High Capacity', icon: '⚡' },
-    'ADAPT': { label: 'ADAPT REGIME', color: 'from-sky-400/20 to-indigo-500/20', text: 'text-sky-600', border: 'border-sky-100', sub: 'Productive Load Absorption', icon: '🌊' },
-    'RESTORATION': { label: 'RESTORATION', color: 'from-amber-400/20 to-orange-500/20', text: 'text-amber-600', border: 'border-amber-100', sub: 'System Pivot: Prioritize Support', icon: '🧘' },
-    'CAUTION': { label: 'CAUTION', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'High Turbulence: Regime Change Detected', icon: '⚠️' }
+    'BUILD': { label: 'BUILD REGIME', color: 'from-emerald-500/20 to-emerald-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'Optimal Resilience & High Capacity' },
+    'ADAPT': { label: 'ADAPT REGIME', color: 'from-sky-400/20 to-indigo-500/20', text: 'text-sky-600', border: 'border-sky-100', sub: 'Productive Load Absorption' },
+    'RESTORATION': { label: 'RESTORATION', color: 'from-amber-400/20 to-orange-500/20', text: 'text-amber-600', border: 'border-amber-100', sub: 'System Pivot: Prioritize Support' },
+    'CAUTION': { label: 'CAUTION', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'High Turbulence: Regime Change Detected' }
   };
 
   const currentStatus = statusMap[regime.status as keyof typeof statusMap] || statusMap.ADAPT;
@@ -39,27 +39,28 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
         <Insights entries={entries} personalityCalibration={user.personalityCalibration} />
       </div>
 
-      <div className="flex justify-center py-10 relative">
-        <div className="absolute inset-0 flex items-center justify-center opacity-20 blur-3xl">
-          <div className={`w-64 h-64 rounded-full ${currentStatus.text.replace('text', 'bg')}`}></div>
+      <div className="py-20 relative">
+        <div className="absolute inset-0 flex items-center justify-center opacity-10 blur-3xl">
+          <div className={`w-96 h-32 rounded-full ${currentStatus.text.replace('text', 'bg')}`}></div>
         </div>
-        <div className={`w-56 h-56 rounded-full flex flex-col items-center justify-center bg-white shadow-2xl border-8 ${currentStatus.border} relative z-10`}>
-          <span className="text-7xl mb-2">{currentStatus.icon}</span>
-          <span className={`text-xs font-black uppercase tracking-[0.2em] ${currentStatus.text}`}>{regime.reason}</span>
+        <div className="relative z-10 space-y-4">
+          <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${currentStatus.text} opacity-70`}>
+            {regime.reason}
+          </span>
+          <h2 className={`text-7xl font-black italic uppercase tracking-tighter leading-none ${currentStatus.text}`}>
+            {currentStatus.label}
+          </h2>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em]">
+            {currentStatus.sub}
+          </p>
         </div>
-      </div>
-      
-      <div className="space-y-2 px-4">
-        <h2 className={`text-4xl font-black italic uppercase tracking-tight ${currentStatus.text}`}>{currentStatus.label}</h2>
-        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">{currentStatus.sub}</p>
       </div>
 
       {focusArea && regime.status !== 'BUILD' && (
         <div className="px-4">
-          <div className="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] inline-flex items-center gap-4 border border-white/20 shadow-sm">
-            <span className="text-2xl">✨</span>
-            <p className="text-xs font-bold text-slate-700 text-left leading-relaxed">
-              <span className="uppercase block text-[10px] opacity-50 mb-1">Coach's Focus</span>
+          <div className="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] inline-flex flex-col items-start border border-white/20 shadow-sm max-w-sm text-left">
+            <span className="uppercase block text-[10px] font-black text-slate-400 tracking-widest mb-2">Coach's Focus</span>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed">
               {focusArea.tip}
             </p>
           </div>
