@@ -56,7 +56,6 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
 
   return (
     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-4 relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-6 opacity-10 text-4xl">💬</div>
       <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI Assistant Coach</h3>
       {loading ? (
         <div className="h-12 flex items-center">
