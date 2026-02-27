@@ -50,7 +50,6 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
-                <span className="text-slate-200">→</span>
               </div>
             </div>
           ))}
