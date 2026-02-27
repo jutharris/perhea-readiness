@@ -283,7 +283,6 @@ const App: React.FC = () => {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {user.role === 'ATHLETE' && !hasSubmittedToday ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 py-12">
-              <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-4xl shadow-inner">📋</div>
               <div className="text-center space-y-2">
                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Protocol Required</h2>
                 <p className="text-slate-500 font-medium px-8">Your dashboard is locked until the morning audit is complete.</p>
@@ -322,7 +321,6 @@ const App: React.FC = () => {
               />
               {!user.coachId && !showInviteCard && (
                 <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
-                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><span className="text-slate-400">⚡</span></div>
                   <p className="text-sm font-bold text-slate-400">Solo Performance.<br/>Enter a coach code to share data.</p>
                   <button onClick={() => {const code = prompt("Enter Squad Invite Code:"); if (code) handleJoinSquad(code);}} className="text-[10px] font-black bg-slate-900 text-white px-8 py-4 rounded-xl uppercase tracking-widest">Join Squad</button>
                 </div>
