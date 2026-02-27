@@ -25,7 +25,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
       alert("Please confirm your name to continue.");
       return;
     }
-    if (selectedRole === 'ATHLETE' && !birthDate) {
+    if (!birthDate) {
       alert("Please enter your birth date to calibrate your protocols.");
       return;
     }
@@ -109,18 +109,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           </div>
         </div>
 
-        {selectedRole === 'ATHLETE' && (
-          <div className="space-y-2 pt-4 animate-in fade-in slide-in-from-top-2 duration-500">
-            <label className="text-[10px] font-black text-slate-300 uppercase ml-2 tracking-tighter">Date of Birth</label>
-            <input 
-              type="date" 
-              value={birthDate}
-              onChange={e => setBirthDate(e.target.value)}
-              className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all" 
-            />
-            <p className="text-[10px] text-slate-400 italic ml-2">Used to calibrate heart rate zones and submax protocols.</p>
-          </div>
-        )}
+        <div className="space-y-2 pt-4 animate-in fade-in slide-in-from-top-2 duration-500">
+          <label className="text-[10px] font-black text-slate-300 uppercase ml-2 tracking-tighter">Date of Birth</label>
+          <input 
+            type="date" 
+            value={birthDate}
+            onChange={e => setBirthDate(e.target.value)}
+            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all" 
+          />
+          <p className="text-[10px] text-slate-400 italic ml-2">Used to calibrate heart rate zones and submax protocols.</p>
+        </div>
       </div>
 
       <button 
