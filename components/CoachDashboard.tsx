@@ -8,18 +8,26 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
   const [unreadMessageIds, setUnreadMessageIds] = useState<string[]>([]);
 
   useEffect(() => {
+    const refreshUnread = () => {
+      if (athletes.length > 0) {
+        // Fetch unread messages for this coach
+        storageService.getMessages(coach.id).then(msgs => {
+          const unreadFromAthletes = msgs
+            .filter(m => m.receiverId === coach.id && !m.read)
+            .map(m => m.senderId);
+          setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
+        });
+      }
+    };
+
     if (athletes.length > 0) {
       getCoachDailyBriefing(athletes, allEntries).then(setBrief);
-      
-      // Fetch unread messages for this coach
-      storageService.getMessages(coach.id).then(msgs => {
-        const unreadFromAthletes = msgs
-          .filter(m => m.receiverId === coach.id && !m.read)
-          .map(m => m.senderId);
-        setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
-      });
+      refreshUnread();
     }
-  }, [athletes, coach.id]);
+
+    const interval = setInterval(refreshUnread, 10000); // Poll every 10s for new messages
+    return () => clearInterval(interval);
+  }, [athletes, coach.id, allEntries]);
 
   const copyCode = () => {
     const link = `${window.location.origin}?join=${coach.inviteCode}`;
