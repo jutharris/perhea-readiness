@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, WellnessEntry, SubmaxTest, TrainingFocus, PersonalityCalibration, Message } from '../types';
+import { User, SubmaxTest, TrainingFocus, PersonalityCalibration, Message } from '../types';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  AreaChart, Area
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { 
-  Activity, MessageSquare, Calendar, LayoutGrid, 
-  ChevronRight, ArrowLeft, Filter, Zap, Info,
-  CheckCircle2, AlertCircle, Clock, TrendingUp, TrendingDown, Minus
+  Activity, MessageSquare, LayoutGrid, 
+  ArrowLeft, Filter, Zap,
+  TrendingUp, TrendingDown, Minus
 } from 'lucide-react';
-import Dashboard from './Dashboard';
 import Insights from './Insights';
 import SubmaxTestUpload from './SubmaxTestUpload';
 import { storageService } from '../services/storageService';
@@ -27,13 +25,13 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [msg, setMsg] = useState('');
   const [tests, setTests] = useState<SubmaxTest[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [comparisonId, setComparisonId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [activeLines, setActiveLines] = useState(['rpe', 'stress']);
-  const [trendWindow, setTrendWindow] = useState<7 | 14 | 28>(7);
+  const [, setTrendWindow] = useState<7 | 14 | 28>(7);
 
   const trendData = useMemo(() => {
     const dataMap: Record<string, any> = {};
@@ -191,7 +189,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     const prevTest = tests.slice(index + 1).find(t => (t.summary?.compliance || 'COMPLIANT') !== 'NON_COMPLIANT');
     if (!prevTest) return { change: 0, label: 'BASELINE', color: 'text-slate-400' };
 
-    let change = 0;
+    let change: number;
     if (test.sport === 'run') {
       const currentTotal = test.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
       const prevTotal = prevTest.data.reduce((acc: number, m: any) => acc + m.split_time_sec, 0);
@@ -266,16 +264,16 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   }, [athleteAge, tests]);
 
   return (
-    <div className="flex flex-col h-full bg-[#F8FAFC] text-slate-900 font-sans">
+    <div className="flex flex-col h-full bg-[#F8FAFC] text-slate-900 font-sans p-8 overflow-y-auto">
       {/* Top Header / Navigation */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-start mb-8">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">{athlete.firstName} {athlete.lastName}</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
                 Focus: {athlete.trainingFocus?.replace('_', ' ') || 'NONE'}
               </span>
@@ -288,232 +286,265 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         <div className="flex gap-3">
           <button 
             onClick={() => setShowConfig(true)}
-            className="p-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-            title="Configuration"
+            className="px-6 py-3 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-xl uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
           >
-            <Filter className="w-5 h-5" />
+            <Filter className="w-4 h-4" />
+            Config
           </button>
           <button 
             onClick={() => setShowChat(true)}
             className="relative px-6 py-3 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-xl uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
           >
-            Open Chat
+            <MessageSquare className="w-4 h-4" />
+            Chat
             {unreadCount > 0 && (
               <span className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></span>
             )}
           </button>
           <button 
             onClick={() => setShowUpload(true)}
-            className="px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
+            className="px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform flex items-center gap-2"
           >
+            <Zap className="w-4 h-4" />
             Upload Submax
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
-        {/* Left Column: Command Center Stage */}
-        <div className="col-span-12 lg:col-span-8 space-y-8">
-          {/* Main Trend Engine */}
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Master Trend Engine</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Longitudinal Covariance Analysis (RPE Offset Applied)</p>
+      <div className="space-y-8">
+        {/* Top Section: AI Audit History & AI Assistant Coach */}
+        <div className="bg-slate-900 rounded-[2.5rem] text-white shadow-2xl overflow-hidden">
+          <div className="grid grid-cols-12">
+            {/* AI Audit History - Horizontal Cards */}
+            <div className="col-span-12 lg:col-span-7 p-8 border-b lg:border-b-0 lg:border-r border-white/10">
+              <div className="flex items-center gap-3 mb-6">
+                <Zap className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-black uppercase tracking-widest">AI Audit History</h3>
               </div>
-              <div className="flex gap-2">
-                {['rpe', 'stress', 'sleep', 'energy', 'soreness'].map(key => (
-                  <button 
-                    key={key}
-                    onClick={() => toggleLine(key)}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                      activeLines.includes(key) 
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                    }`}
-                  >
-                    {key}
-                  </button>
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                {entries.slice(0, 10).map((entry, i) => (
+                  <div key={i} className="flex-shrink-0 w-48 p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-white/40 uppercase">
+                        {i === 0 ? 'Today' : i === 1 ? 'Yesterday' : new Date(entry.isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </span>
+                      <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">RPE {entry.lastSessionRPE}</span>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-white/70 italic line-clamp-3">
+                      {entry.comments || "No notes logged."}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
 
-            <div className="p-8 h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #F1F5F9', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    itemStyle={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' }}
-                  />
-                  {activeLines.includes('rpe') && <Line type="monotone" dataKey="rpe" stroke="#6366F1" strokeWidth={3} dot={{ r: 4, fill: '#6366F1' }} name="RPE" />}
-                  {activeLines.includes('stress') && <Line type="monotone" dataKey="stress" stroke="#F43F5E" strokeWidth={2} strokeDasharray="5 5" dot={false} name="STRESS" />}
-                  {activeLines.includes('sleep') && <Line type="monotone" dataKey="sleep" stroke="#10B981" strokeWidth={2} dot={false} name="SLEEP" />}
-                  {activeLines.includes('energy') && <Line type="monotone" dataKey="energy" stroke="#F59E0B" strokeWidth={2} dot={false} name="ENERGY" />}
-                  {activeLines.includes('soreness') && <Line type="monotone" dataKey="soreness" stroke="#8B5CF6" strokeWidth={2} dot={false} name="SORENESS" />}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="p-8 bg-slate-50 border-t border-slate-100 grid grid-cols-3 gap-8">
-              {[
-                { label: '7-Day Trend', data: averages.d7, prev: averages.d14 },
-                { label: '14-Day Trend', data: averages.d14, prev: averages.d28 },
-                { label: '28-Day Trend', data: averages.d28, prev: null }
-              ].map((t, i) => (
-                <div key={i} className="space-y-3">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.label}</h4>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase">RPE</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-black text-slate-900">{t.data?.rpe.toFixed(1)}</span>
-                        {t.prev && <TrendIndicator current={t.data!.rpe} previous={t.prev.rpe} inverse />}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase">Stress</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-black text-slate-900">{t.data?.stress.toFixed(1)}</span>
-                        {t.prev && <TrendIndicator current={t.data!.stress} previous={t.prev.stress} inverse />}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase">Sleep</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-black text-slate-900">{t.data?.sleep.toFixed(1)}</span>
-                        {t.prev && <TrendIndicator current={t.data!.sleep} previous={t.prev.sleep} />}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase">Energy</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-black text-slate-900">{t.data?.energy.toFixed(1)}</span>
-                        {t.prev && <TrendIndicator current={t.data!.energy} previous={t.prev.energy} />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Submax Performance Section */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-            <div className="flex justify-between items-end">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Submax Performance</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Objective Physiological Markers</p>
+            {/* AI Assistant Coach */}
+            <div className="col-span-12 lg:col-span-5 p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <Activity className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-black uppercase tracking-widest">AI Assistant Coach</h3>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tests.slice(0, 4).map((test, idx) => {
-                const analysis = getTestAnalysis(test, idx);
-                return (
-                  <div key={test.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer" onClick={() => idx > 0 && setComparisonId(test.id)}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-1 rounded uppercase tracking-widest">{test.sport}</span>
-                        <p className="text-[10px] font-bold text-slate-500">{new Date(test.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-black ${analysis.color}`}>
-                          {analysis.change > 0 ? '+' : ''}{analysis.change.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Avg HR</p>
-                        <p className="text-xs font-black text-slate-900">{Math.round(test.summary?.hr_avg || 0)} bpm</p>
-                      </div>
-                      <div>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Floor</p>
-                        <p className="text-xs font-black text-slate-900">
-                          {test.sport === 'bike' ? `${Math.round(test.summary?.power_avg || 0)}W` : test.summary?.split_range_mmss}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                <Insights entries={entries} user={athlete} role="COACH" personalityCalibration={athlete.personalityCalibration} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Insights & Mirror */}
-        <div className="col-span-12 lg:col-span-4 space-y-8">
-          {/* Athlete Mirror (Simplified Dashboard) */}
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-            <div className="flex items-center gap-3">
-              <LayoutGrid className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Current Status</h3>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black">
-                    {entries[0]?.lastSessionRPE || 0}
+        {/* Middle Section: Current Status & Master Trend */}
+        <div className="grid grid-cols-12 gap-8">
+          {/* Left: Current Status */}
+          <div className="col-span-12 lg:col-span-4">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm h-full space-y-6">
+              <div className="flex items-center gap-3">
+                <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Current Status</h3>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black">
+                      {entries[0]?.lastSessionRPE || 0}
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Latest RPE</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{entries[0]?.sessionType || 'REST'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Latest RPE</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">{entries[0]?.sessionType || 'REST'}</p>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged</p>
+                    <p className="text-xs font-bold text-slate-900">{entries[0] ? new Date(entries[0].isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'N/A'}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged</p>
-                  <p className="text-xs font-bold text-slate-900">{entries[0] ? new Date(entries[0].isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'N/A'}</p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {[
+                    { label: 'Sleep', val: entries[0]?.sleepQuality, max: 7 },
+                    { label: 'Energy', val: entries[0]?.energy, max: 7 },
+                    { label: 'Stress', val: entries[0]?.stress, max: 7 },
+                    { label: 'Soreness', val: entries[0]?.soreness, max: 7 }
+                  ].map(m => (
+                    <div key={m.label} className="space-y-1.5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                        <span>{m.label}</span>
+                        <span>{m.val || 0}/{m.max}</span>
+                      </div>
+                      <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${((m.val || 0) / m.max) * 100}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
+          {/* Right: Master Trend */}
+          <div className="col-span-12 lg:col-span-8">
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Master Trend Engine</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Longitudinal Covariance Analysis (RPE Offset Applied)</p>
+                </div>
+                <div className="flex gap-2">
+                  {['rpe', 'stress', 'sleep', 'energy', 'soreness'].map(key => (
+                    <button 
+                      key={key}
+                      onClick={() => toggleLine(key)}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                        activeLines.includes(key) 
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                          : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="p-8 h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #F1F5F9', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      itemStyle={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' }}
+                    />
+                    {activeLines.includes('rpe') && <Line type="monotone" dataKey="rpe" stroke="#6366F1" strokeWidth={3} dot={{ r: 4, fill: '#6366F1' }} name="RPE" />}
+                    {activeLines.includes('stress') && <Line type="monotone" dataKey="stress" stroke="#F43F5E" strokeWidth={2} strokeDasharray="5 5" dot={false} name="STRESS" />}
+                    {activeLines.includes('sleep') && <Line type="monotone" dataKey="sleep" stroke="#10B981" strokeWidth={2} dot={false} name="SLEEP" />}
+                    {activeLines.includes('energy') && <Line type="monotone" dataKey="energy" stroke="#F59E0B" strokeWidth={2} dot={false} name="ENERGY" />}
+                    {activeLines.includes('soreness') && <Line type="monotone" dataKey="soreness" stroke="#8B5CF6" strokeWidth={2} dot={false} name="SORENESS" />}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100 grid grid-cols-3 gap-8">
                 {[
-                  { label: 'Sleep', val: entries[0]?.sleepQuality, max: 7 },
-                  { label: 'Energy', val: entries[0]?.energy, max: 7 },
-                  { label: 'Stress', val: entries[0]?.stress, max: 7 },
-                  { label: 'Soreness', val: entries[0]?.soreness, max: 7 }
-                ].map(m => (
-                  <div key={m.label} className="space-y-1.5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                      <span>{m.label}</span>
-                      <span>{m.val || 0}/{m.max}</span>
-                    </div>
-                    <div className="h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${((m.val || 0) / m.max) * 100}%` }}></div>
+                  { label: '7-Day Trend', data: averages.d7, prev: averages.d14 },
+                  { label: '14-Day Trend', data: averages.d14, prev: averages.d28 },
+                  { label: '28-Day Trend', data: averages.d28, prev: null }
+                ].map((t, i) => (
+                  <div key={i} className="space-y-3">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.label}</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">RPE</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-slate-900">{t.data?.rpe.toFixed(1)}</span>
+                          {t.prev && <TrendIndicator current={t.data!.rpe} previous={t.prev.rpe} inverse />}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Stress</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-slate-900">{t.data?.stress.toFixed(1)}</span>
+                          {t.prev && <TrendIndicator current={t.data!.stress} previous={t.prev.stress} inverse />}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Sleep</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-slate-900">{t.data?.sleep.toFixed(1)}</span>
+                          {t.prev && <TrendIndicator current={t.data!.sleep} previous={t.prev.sleep} />}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Energy</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-slate-900">{t.data?.energy.toFixed(1)}</span>
+                          {t.prev && <TrendIndicator current={t.data!.energy} previous={t.prev.energy} />}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* AI Audit History */}
-          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6">
+        {/* Bottom Section: Submax Performance */}
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-8 border-b border-slate-50 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <Zap className="w-5 h-5 text-indigo-400" />
-              <h3 className="text-sm font-black uppercase tracking-widest">AI Audit History</h3>
+              <Activity className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Submax Performance</h3>
             </div>
-            
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
-              {entries.slice(0, 7).map((entry, i) => (
-                <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black text-white/40 uppercase">{new Date(entry.isoDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">RPE {entry.lastSessionRPE}</span>
+            {stabilityIndex !== null && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Stability Index</span>
+                <span className="text-sm font-black text-emerald-700">{stabilityIndex.toFixed(0)}%</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tests.map((test, i) => {
+                const analysis = getTestAnalysis(test, i);
+                return (
+                  <div key={test.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 hover:border-indigo-200 transition-all group">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{test.sport}</p>
+                        <p className="text-sm font-black text-slate-900">{new Date(test.testDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${test.summary?.compliance === 'NON_COMPLIANT' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {test.summary?.compliance || 'COMPLIANT'}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Avg HR</p>
+                        <p className="text-lg font-black text-slate-900">{test.summary?.hr_avg} <span className="text-[10px] text-slate-400">BPM</span></p>
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">{test.sport === 'run' ? 'Avg Pace' : 'Avg Power'}</p>
+                        <p className="text-lg font-black text-slate-900">
+                          {test.sport === 'run' ? test.summary?.pace_avg : `${test.summary?.power_avg}W`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-200 flex justify-between items-center">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${analysis.color}`}>{analysis.label}</span>
+                      <button 
+                        onClick={() => setComparisonId(test.id)}
+                        className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                      >
+                        Compare
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-white/70 italic">
-                    {entry.comments || "No notes logged for this entry."}
-                  </p>
-                </div>
-              ))}
-            </div>
-            
-            <div className="pt-4 border-t border-white/10">
-              <Insights entries={entries} user={athlete} role="COACH" personalityCalibration={athlete.personalityCalibration} />
+                );
+              })}
             </div>
           </div>
         </div>
