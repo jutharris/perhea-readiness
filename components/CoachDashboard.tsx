@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
-const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onRefresh }) => {
+const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onViewMockups, onRefresh }) => {
   const [brief, setBrief] = useState('');
   const [markingRead, setMarkingRead] = useState<string | null>(null);
 
@@ -43,9 +43,14 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Your Squad Code</h3>
           <p className="text-3xl font-black">{coach.inviteCode}</p>
         </div>
-        <button onClick={copyCode} className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl text-xs font-black backdrop-blur-md transition-all">
-          COPY INVITE LINK
-        </button>
+        <div className="flex gap-4">
+          <button onClick={onViewMockups} className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-xs font-black backdrop-blur-md transition-all">
+            VIEW DESIGN MOCKUPS
+          </button>
+          <button onClick={copyCode} className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl text-xs font-black backdrop-blur-md transition-all">
+            COPY INVITE LINK
+          </button>
+        </div>
       </div>
 
       <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
