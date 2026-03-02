@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
-const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onViewMockups, onRefresh }) => {
+const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onRefresh }) => {
   const [brief, setBrief] = useState('');
   const [markingRead, setMarkingRead] = useState<string | null>(null);
 
@@ -44,9 +44,6 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
           <p className="text-3xl font-black">{coach.inviteCode}</p>
         </div>
         <div className="flex gap-4">
-          <button onClick={onViewMockups} className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-xs font-black backdrop-blur-md transition-all">
-            VIEW DESIGN MOCKUPS
-          </button>
           <button onClick={copyCode} className="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl text-xs font-black backdrop-blur-md transition-all">
             COPY INVITE LINK
           </button>
