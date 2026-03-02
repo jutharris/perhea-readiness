@@ -40,27 +40,34 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     try {
       await storageService.markAthleteAsRead(coachId, athlete.id);
       await fetchMessages();
-      if (onRefresh) onRefresh();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error("Error marking all as read:", err);
     }
   };
 
+  const unreadCount = useMemo(() => {
+    const unreadMsgs = messages.filter(m => m.receiverId === coachId && m.read !== true).length;
+    const unreadNotes = entries.filter((e: any) => (e.comments && e.comments.trim().length > 0) && e.readByCoach !== true).length;
+    return unreadMsgs + unreadNotes;
+  }, [messages, entries, coachId]);
+
   useEffect(() => {
     fetchTests();
     fetchMessages();
-    markAllRead(); // Aggressively mark everything as read on mount
     
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [athlete.id]);
 
   useEffect(() => {
-    markAllRead(); // Also mark as read if entries update
-  }, [entries, athlete.id]);
+    if (unreadCount > 0) {
+      markAllRead();
+    }
+  }, [unreadCount, athlete.id]);
 
   useEffect(() => {
-    if (showChat) {
+    if (showChat && unreadCount > 0) {
       markAllRead();
     }
   }, [showChat]);
@@ -228,7 +235,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
           className="relative px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform flex items-center gap-2"
         >
           Open Chat
-          {(messages.some(m => m.receiverId === coachId && !m.read) || entries.some((e: any) => (e.comments && e.comments.trim().length > 0) && e.readByCoach !== true)) && (
+          {unreadCount > 0 && (
             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
           )}
         </button>
