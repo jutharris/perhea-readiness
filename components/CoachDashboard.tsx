@@ -3,30 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
-const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthlete }) => {
+const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete }) => {
   const [brief, setBrief] = useState('');
-  const [unreadMessageIds, setUnreadMessageIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const refreshUnread = () => {
-      if (athletes.length > 0) {
-        // Fetch unread messages for this coach
-        storageService.getMessages(coach.id).then(msgs => {
-          const unreadFromAthletes = msgs
-            .filter(m => m.receiverId === coach.id && !m.read)
-            .map(m => m.senderId);
-          setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
-        });
-      }
-    };
-
     if (athletes.length > 0) {
       getCoachDailyBriefing(athletes, allEntries).then(setBrief);
-      refreshUnread();
     }
-
-    const interval = setInterval(refreshUnread, 10000); // Poll every 10s for new messages
-    return () => clearInterval(interval);
   }, [athletes, coach.id, allEntries]);
 
   const copyCode = () => {
