@@ -364,7 +364,7 @@ const App: React.FC = () => {
       )}
       {activeView === 'SUBMAX_TEST' && user && <SubmaxTestUpload user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} onCancel={() => setActiveView('DASHBOARD')} />}
       {activeView === 'COACH_DASHBOARD' && user && <CoachDashboard coach={user} athletes={coachedAthletes} allEntries={allEntries} onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} />}
-      {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={() => { refreshData(user); setActiveView('COACH_DASHBOARD'); }} />}
+      {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={async () => { await refreshData(user); setActiveView('COACH_DASHBOARD'); }} />}
       
       {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
     </Layout>
