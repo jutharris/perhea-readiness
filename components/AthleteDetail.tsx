@@ -228,7 +228,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
           className="relative px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform flex items-center gap-2"
         >
           Open Chat
-          {messages.some(m => m.receiverId === coachId && !m.read) && (
+          {(messages.some(m => m.receiverId === coachId && !m.read) || entries.some((e: any) => (e.comments && e.comments.trim().length > 0) && e.readByCoach !== true)) && (
             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
           )}
         </button>
