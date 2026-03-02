@@ -1,15 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
+import { storageService } from '../services/storageService';
 
 const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthlete }) => {
   const [brief, setBrief] = useState('');
+  const [unreadMessageIds, setUnreadMessageIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (athletes.length > 0) {
       getCoachDailyBriefing(athletes, allEntries).then(setBrief);
+      
+      // Fetch unread messages for this coach
+      storageService.getMessages(coach.id).then(msgs => {
+        const unreadFromAthletes = msgs
+          .filter(m => m.receiverId === coach.id && !m.read)
+          .map(m => m.senderId);
+        setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
+      });
     }
-  }, [athletes]);
+  }, [athletes, coach.id]);
 
   const copyCode = () => {
     const link = `${window.location.origin}?join=${coach.inviteCode}`;
@@ -44,7 +54,9 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
         <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden divide-y divide-slate-50 shadow-sm">
           {athletes.map((a: any) => {
             const athleteEntries = allEntries.filter((e: any) => e.userId === a.id);
-            const hasUnread = athleteEntries.some((e: any) => e.comments && !e.readByCoach);
+            const hasUnreadComment = athleteEntries.some((e: any) => e.comments && !e.readByCoach);
+            const hasUnreadMessage = unreadMessageIds.includes(a.id);
+            const hasUnread = hasUnreadComment || hasUnreadMessage;
             
             return (
               <div key={a.id} onClick={() => onViewAthlete(a)} className="p-6 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors group">
@@ -63,7 +75,11 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasUnread && <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mr-2">New Note</span>}
+                  {hasUnread && (
+                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mr-2">
+                      {hasUnreadMessage ? 'New Message' : 'New Note'}
+                    </span>
+                  )}
                   <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
                 </div>
               </div>
