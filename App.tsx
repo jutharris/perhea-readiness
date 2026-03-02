@@ -389,6 +389,7 @@ const App: React.FC = () => {
           allEntries={allEntries} 
           unreadMessageIds={unreadMessageIds}
           onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} 
+          onRefresh={() => refreshData(user)}
         />
       )}
       {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && (
