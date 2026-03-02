@@ -13,6 +13,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [loading, setLoading] = useState(true);
   const [comparisonId, setComparisonId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const fetchTests = async () => {
     setLoading(true);
@@ -208,6 +209,15 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
             </span>
           </div>
         </div>
+        <button 
+          onClick={() => setShowChat(true)}
+          className="relative px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform flex items-center gap-2"
+        >
+          Open Chat
+          {messages.some(m => m.receiverId === coachId && !m.read) && (
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+          )}
+        </button>
       </div>
 
       {/* Athlete Configuration Section */}
@@ -251,49 +261,76 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       
       <Dashboard entries={entries} user={athlete} onNewReport={() => {}} hideAction />
 
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Contextual Chat</h3>
-          <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Direct Line</span>
-        </div>
-        
-        <div className="space-y-4 max-h-64 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100">
-          {messages.length === 0 ? (
-            <p className="text-xs text-slate-400 italic text-center py-4">No messages yet. Start the conversation below.</p>
-          ) : (
-            messages.map((m) => (
-              <div key={m.id} className={`flex ${m.senderId === coachId ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-2xl text-xs font-medium shadow-sm ${
-                  m.senderId === coachId 
-                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                }`}>
-                  {m.text}
-                  <div className={`text-[8px] mt-1 opacity-60 ${m.senderId === coachId ? 'text-right' : 'text-left'}`}>
-                    {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
+      {/* Chat Side Drawer */}
+      {showChat && (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowChat(false)}></div>
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Chat with {athlete.firstName}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Direct Line</p>
               </div>
-            ))
-          )}
-        </div>
+              <button onClick={() => setShowChat(false)} className="p-2 hover:bg-slate-50 rounded-full transition-colors">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-        <div className="space-y-4">
-          <textarea 
-            value={msg} 
-            onChange={e => setMsg(e.target.value)} 
-            placeholder="Send guidance or a quick note..." 
-            className="w-full h-24 p-4 bg-slate-50 rounded-2xl outline-none text-sm border border-slate-100 focus:border-indigo-300 transition-colors resize-none" 
-          />
-          <button 
-            onClick={send} 
-            disabled={!msg.trim()}
-            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100"
-          >
-            Send Message
-          </button>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-slate-400 italic font-medium">No messages yet. Start the conversation below.</p>
+                </div>
+              ) : (
+                messages.map((m) => (
+                  <div key={m.id} className={`flex ${m.senderId === coachId ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-4 rounded-2xl text-xs font-medium shadow-sm ${
+                      m.senderId === coachId 
+                        ? 'bg-indigo-600 text-white rounded-tr-none' 
+                        : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                    }`}>
+                      {m.text}
+                      <div className={`text-[8px] mt-2 flex items-center gap-1 opacity-60 ${m.senderId === coachId ? 'justify-end' : 'justify-start'}`}>
+                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {m.senderId === coachId && m.read && (
+                          <span className="text-[8px] font-black uppercase tracking-tighter ml-1">Read</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-white">
+              <div className="relative">
+                <textarea 
+                  value={msg} 
+                  onChange={e => setMsg(e.target.value)} 
+                  placeholder="Send guidance or a quick note..." 
+                  className="w-full h-32 p-4 bg-slate-50 rounded-2xl outline-none text-sm border border-slate-100 focus:border-indigo-300 transition-colors resize-none pr-12" 
+                />
+                <button 
+                  onClick={send} 
+                  disabled={!msg.trim()}
+                  className="absolute bottom-4 right-4 p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {comparisonData && (
         <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl animate-in zoom-in-95 duration-500">
