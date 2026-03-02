@@ -12,7 +12,6 @@ import Trends from './components/Trends';
 import SubmaxLab from './components/SubmaxLab';
 import AuditProcessingOverlay from './components/AuditProcessingOverlay';
 import CoachCorner from './components/CoachCorner';
-import CoachMockups from './components/CoachMockups';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
@@ -390,12 +389,8 @@ const App: React.FC = () => {
           allEntries={allEntries} 
           unreadMessageIds={unreadMessageIds}
           onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} 
-          onViewMockups={() => setActiveView('MOCKUPS')}
           onRefresh={() => refreshData(user)}
         />
-      )}
-      {activeView === 'MOCKUPS' && (
-        <CoachMockups onExit={() => setActiveView('COACH_DASHBOARD')} />
       )}
 
       {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && (
