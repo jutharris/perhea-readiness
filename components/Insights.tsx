@@ -84,7 +84,11 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
       setShowInput(null);
       setUserInput('');
     } catch (err) {
-      setInteractionResponse("I'm having trouble processing that request right now.");
+      if (type === 'MESSAGE_COACH') {
+        setInteractionResponse("Failed to send message. Please try again.");
+      } else {
+        setInteractionResponse("I'm having trouble processing that request right now.");
+      }
     } finally {
       setInteractionLoading(false);
     }
