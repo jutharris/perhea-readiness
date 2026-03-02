@@ -1,3 +1,4 @@
+
 -- =========================================================
 -- MASTER SETUP: PerHea Athlete Readiness Platform (v3.0)
 -- =========================================================
@@ -15,6 +16,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT CHECK (role IN ('ATHLETE', 'COACH', 'PENDING')) NOT NULL DEFAULT 'PENDING',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   invite_code TEXT UNIQUE,
+  birth_date DATE,
+  training_focus TEXT,
+  personality_calibration TEXT DEFAULT 'BALANCED',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -36,6 +40,16 @@ CREATE TABLE IF NOT EXISTS public.wellness_entries (
   injured BOOLEAN DEFAULT false,
   menstrual_cycle BOOLEAN DEFAULT false,
   comments TEXT,
+  read_by_coach BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  receiver_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  text TEXT NOT NULL,
+  read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -66,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.submax_tests (
 -- 3. SECURITY (RLS)
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
 
@@ -78,6 +93,8 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Coaches manage sent adjustments" ON public.coach_adjustments;
     DROP POLICY IF EXISTS "Athletes manage own tests" ON public.submax_tests;
     DROP POLICY IF EXISTS "Coaches view squad tests" ON public.submax_tests;
+    DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
+    DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 -- Policies
@@ -92,4 +109,15 @@ CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR 
 CREATE POLICY "Athletes manage own tests" ON public.submax_tests FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Coaches view squad tests" ON public.submax_tests FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.submax_tests.user_id AND p.coach_id = auth.uid())
+);
+
+-- Messages Policies
+CREATE POLICY "Users can view their own messages" ON public.messages FOR SELECT USING (
+  auth.uid() = sender_id OR auth.uid() = receiver_id
+);
+CREATE POLICY "Users can send messages" ON public.messages FOR INSERT WITH CHECK (
+  auth.uid() = sender_id
+);
+CREATE POLICY "Users can update their own received messages" ON public.messages FOR UPDATE USING (
+  auth.uid() = receiver_id
 );
