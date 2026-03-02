@@ -285,18 +285,18 @@ export const storageService = {
 
   markAthleteAsRead: async (coachId: string, athleteId: string) => {
     checkConfig();
+    // Simplified: Just set everything to true for this athlete/coach pair.
+    // Setting true to true is a no-op in the DB but ensures NULLs/False are caught.
     await Promise.all([
       supabase!
         .from('messages')
         .update({ read: true })
         .eq('receiver_id', coachId)
-        .eq('sender_id', athleteId)
-        .neq('read', true),
+        .eq('sender_id', athleteId),
       supabase!
         .from('wellness_entries')
         .update({ read_by_coach: true })
         .eq('user_id', athleteId)
-        .neq('read_by_coach', true)
     ]);
   },
 
