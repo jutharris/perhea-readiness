@@ -5,7 +5,7 @@ import Insights from './Insights';
 import SubmaxTestUpload from './SubmaxTestUpload';
 import { storageService } from '../services/storageService';
 
-const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachId, onBack }) => {
+const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachId, onRefresh, onBack }) => {
   const [athlete, setAthlete] = useState<User>(initialAthlete);
   const [msg, setMsg] = useState('');
   const [tests, setTests] = useState<SubmaxTest[]>([]);
@@ -40,6 +40,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     try {
       await storageService.markMessagesAsRead(coachId, athlete.id);
       await fetchMessages();
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
     }
@@ -51,6 +52,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       .map((e: WellnessEntry) => e.id);
     if (unreadIds.length === 0) return;
     await storageService.markEntriesAsRead(unreadIds);
+    if (onRefresh) onRefresh();
   };
 
   useEffect(() => {
