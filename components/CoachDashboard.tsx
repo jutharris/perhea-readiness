@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { getCoachDailyBriefing } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 
-const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete }) => {
+const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onRefresh }) => {
   const [brief, setBrief] = useState('');
+  const [markingRead, setMarkingRead] = useState<string | null>(null);
 
   useEffect(() => {
     if (athletes.length > 0) {
@@ -16,6 +17,19 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
     const link = `${window.location.origin}?join=${coach.inviteCode}`;
     navigator.clipboard.writeText(link);
     alert("Invite link copied to clipboard!");
+  };
+
+  const markRead = async (e: React.MouseEvent, athleteId: string) => {
+    e.stopPropagation();
+    setMarkingRead(athleteId);
+    try {
+      await storageService.markAthleteAsRead(coach.id, athleteId);
+      if (onRefresh) await onRefresh();
+    } catch (err) {
+      console.error("Error marking as read:", err);
+    } finally {
+      setMarkingRead(null);
+    }
   };
 
   return (
@@ -53,19 +67,33 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
               <div key={a.id} onClick={() => onViewAthlete(a)} className="p-6 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors group">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-400">
+                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-400">
                       {a.firstName[0]}{a.lastName[0]}
                     </div>
-                    {hasUnread && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white animate-pulse"></div>
-                    )}
                   </div>
                   <div>
-                    <p className="font-bold text-slate-900">{a.firstName} {a.lastName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-slate-900">{a.firstName} {a.lastName}</p>
+                      {hasUnreadMessage && (
+                        <span className="bg-indigo-600 text-[8px] text-white px-2 py-0.5 rounded-full font-black animate-pulse">NEW MESSAGE</span>
+                      )}
+                      {hasUnreadComment && (
+                        <span className="bg-emerald-500 text-[8px] text-white px-2 py-0.5 rounded-full font-black animate-pulse">NEW NOTE</span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-400">{a.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                  {hasUnread && (
+                    <button 
+                      onClick={(e) => markRead(e, a.id)}
+                      disabled={markingRead === a.id}
+                      className="text-[10px] font-black text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest"
+                    >
+                      {markingRead === a.id ? '...' : 'Mark Read'}
+                    </button>
+                  )}
                   <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
                 </div>
               </div>
