@@ -36,40 +36,32 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     }
   };
 
-  const markMessagesRead = async () => {
+  const markAllRead = async () => {
     try {
-      await storageService.markMessagesAsRead(coachId, athlete.id);
+      await storageService.markAthleteAsRead(coachId, athlete.id);
       await fetchMessages();
       if (onRefresh) onRefresh();
     } catch (err) {
-      console.error(err);
+      console.error("Error marking all as read:", err);
     }
-  };
-
-  const markEntriesRead = async () => {
-    const unreadIds = entries
-      .filter((e: WellnessEntry) => e.comments && !e.readByCoach)
-      .map((e: WellnessEntry) => e.id);
-    if (unreadIds.length === 0) return;
-    await storageService.markEntriesAsRead(unreadIds);
-    if (onRefresh) onRefresh();
   };
 
   useEffect(() => {
     fetchTests();
     fetchMessages();
+    markAllRead(); // Aggressively mark everything as read on mount
     
-    const interval = setInterval(fetchMessages, 10000); // Poll for new messages while viewing athlete
+    const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [athlete.id]);
 
   useEffect(() => {
-    markEntriesRead();
+    markAllRead(); // Also mark as read if entries update
   }, [entries, athlete.id]);
 
   useEffect(() => {
     if (showChat) {
-      markMessagesRead();
+      markAllRead();
     }
   }, [showChat]);
 
