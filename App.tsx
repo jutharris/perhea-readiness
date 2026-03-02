@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [allEntries, setAllEntries] = useState<WellnessEntry[]>([]);
   const [submaxTests, setSubmaxTests] = useState<SubmaxTest[]>([]);
   const [coachedAthletes, setCoachedAthletes] = useState<User[]>([]);
+  const [unreadMessageIds, setUnreadMessageIds] = useState<string[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [showInviteCard, setShowInviteCard] = useState(false);
@@ -69,12 +70,18 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     try {
       if (currentUser.role === 'COACH') {
-        const [entriesData, coachedData] = await Promise.all([
+        const [entriesData, coachedData, msgs] = await Promise.all([
           storageService.getAllEntries(),
-          storageService.getCoachedAthletes(currentUser.id)
+          storageService.getCoachedAthletes(currentUser.id),
+          storageService.getMessages(currentUser.id)
         ]);
         setAllEntries(entriesData);
         setCoachedAthletes(coachedData);
+        
+        const unreadFromAthletes = msgs
+          .filter(m => m.receiverId === currentUser.id && !m.read)
+          .map(m => m.senderId);
+        setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
       } else if (currentUser.role === 'ATHLETE') {
         const [userData, testData] = await Promise.all([
           storageService.getEntriesForUser(currentUser.id),
@@ -363,8 +370,26 @@ const App: React.FC = () => {
         />
       )}
       {activeView === 'SUBMAX_TEST' && user && <SubmaxTestUpload user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} onCancel={() => setActiveView('DASHBOARD')} />}
-      {activeView === 'COACH_DASHBOARD' && user && <CoachDashboard coach={user} athletes={coachedAthletes} allEntries={allEntries} onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} />}
-      {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={async () => { await refreshData(user); setActiveView('COACH_DASHBOARD'); }} />}
+      {activeView === 'COACH_DASHBOARD' && user && (
+        <CoachDashboard 
+          coach={user} 
+          athletes={coachedAthletes} 
+          allEntries={allEntries} 
+          unreadMessageIds={unreadMessageIds}
+          onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} 
+        />
+      )}
+      {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && (
+        <AthleteDetail 
+          athlete={selectedAthlete} 
+          entries={allEntries.filter(e => e.userId === selectedAthlete.id)} 
+          coachId={user.id} 
+          onBack={async () => { 
+            await refreshData(user); 
+            setActiveView('COACH_DASHBOARD'); 
+          }} 
+        />
+      )}
       
       {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
     </Layout>
