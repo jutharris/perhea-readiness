@@ -396,6 +396,7 @@ const App: React.FC = () => {
           athlete={selectedAthlete} 
           entries={allEntries.filter(e => e.userId === selectedAthlete.id)} 
           coachId={user.id} 
+          onRefresh={() => refreshData(user)}
           onBack={async () => { 
             await refreshData(user); 
             setActiveView('COACH_DASHBOARD'); 
