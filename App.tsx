@@ -11,6 +11,7 @@ import SubmaxTestUpload from './components/SubmaxTestUpload';
 import Trends from './components/Trends';
 import SubmaxLab from './components/SubmaxLab';
 import AuditProcessingOverlay from './components/AuditProcessingOverlay';
+import CoachCorner from './components/CoachCorner';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View, UserRole } from './types';
@@ -364,6 +365,8 @@ const App: React.FC = () => {
       {activeView === 'SUBMAX_TEST' && user && <SubmaxTestUpload user={user} onComplete={async () => { await refreshData(user); setActiveView('DASHBOARD'); }} onCancel={() => setActiveView('DASHBOARD')} />}
       {activeView === 'COACH_DASHBOARD' && user && <CoachDashboard coach={user} athletes={coachedAthletes} allEntries={allEntries} onViewAthlete={(a: User) => { setSelectedAthlete(a); setActiveView('ATHLETE_DETAIL'); }} />}
       {activeView === 'ATHLETE_DETAIL' && selectedAthlete && user && <AthleteDetail athlete={selectedAthlete} entries={allEntries.filter(e => e.userId === selectedAthlete.id)} coachId={user.id} onBack={() => { refreshData(user); setActiveView('COACH_DASHBOARD'); }} />}
+      
+      {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
     </Layout>
   );
 };
