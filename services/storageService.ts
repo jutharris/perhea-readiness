@@ -190,7 +190,8 @@ export const storageService = {
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
-      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments
+      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
+      readByCoach: d.read_by_coach
     }));
   },
 
@@ -201,7 +202,8 @@ export const storageService = {
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
-      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments
+      feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
+      readByCoach: d.read_by_coach
     }));
   },
 
@@ -224,6 +226,52 @@ export const storageService = {
   saveAdjustment: async (userId: string, coachId: string, message: string) => {
     checkConfig();
     await supabase!.from('coach_adjustments').insert([{ user_id: userId, coach_id: coachId, message }]);
+  },
+
+  sendMessage: async (senderId: string, receiverId: string, text: string) => {
+    checkConfig();
+    const { error } = await supabase!.from('messages').insert([{
+      sender_id: senderId,
+      receiver_id: receiverId,
+      text,
+      read: false
+    }]);
+    if (error) throw error;
+  },
+
+  getMessages: async (userId: string): Promise<Message[]> => {
+    checkConfig();
+    const { data } = await supabase!
+      .from('messages')
+      .select('*')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .order('created_at', { ascending: true });
+    
+    return (data || []).map(d => ({
+      id: d.id,
+      senderId: d.sender_id,
+      receiverId: d.receiver_id,
+      text: d.text,
+      timestamp: d.created_at,
+      read: d.read
+    }));
+  },
+
+  markMessagesAsRead: async (userId: string, senderId: string) => {
+    checkConfig();
+    await supabase!
+      .from('messages')
+      .update({ read: true })
+      .eq('receiver_id', userId)
+      .eq('sender_id', senderId);
+  },
+
+  markEntryAsRead: async (entryId: string) => {
+    checkConfig();
+    await supabase!
+      .from('wellness_entries')
+      .update({ read_by_coach: true })
+      .eq('id', entryId);
   },
 
   saveSubmaxTest: async (testData: Partial<SubmaxTest>) => {
@@ -280,10 +328,16 @@ export const storageService = {
   },
 
   calculateRegime: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED') => {
-    if (entries.length === 0) return { status: 'ADAPT' as Regime, reason: 'Establishing Baseline' };
+    const entryCount = entries.length;
+    if (entryCount === 0) return { status: 'CALIBRATING' as Regime, reason: 'Building Baseline' };
     
+    // Phase 1: Days 1-7 (Building Baseline)
+    if (entryCount <= 7) {
+      return { status: 'CALIBRATING' as Regime, reason: 'Building Baseline' };
+    }
+
     const latest = entries[0];
-    const lookbackDays = storageService.getLookbackDays(entries.length);
+    const lookbackDays = storageService.getLookbackDays(entryCount);
     const stats = storageService.calculateMetricStats(entries, lookbackDays, calibration);
     const correlations = storageService.calculateCorrelations(entries, lookbackDays);
     
@@ -292,7 +346,17 @@ export const storageService = {
     const moderateVolatility = stats.some(s => s.status === 'MODERATE');
     const negativeTrends = correlations && correlations.length > 0;
 
-    // 1. CAUTION: High turbulence or acute issues
+    const isTurbulent = latest.injured || latest.feelingSick || highVolatility || avgWellness < 60 || negativeTrends || moderateVolatility;
+
+    // Phase 2: Days 8-14 (Binary Phase: ADAPT or RESTORATION)
+    if (entryCount <= 14) {
+      if (isTurbulent) {
+        return { status: 'RESTORATION' as Regime, reason: 'System Turbulence Detected' };
+      }
+      return { status: 'ADAPT' as Regime, reason: 'Stable Adaptation' };
+    }
+
+    // Phase 3: Day 15+ (Full System Access)
     if (latest.injured || latest.feelingSick || highVolatility) {
       return { 
         status: 'CAUTION' as Regime, 
@@ -300,7 +364,6 @@ export const storageService = {
       };
     }
 
-    // 2. RESTORATION: Drifting metrics or low average
     if (avgWellness < 60 || negativeTrends || moderateVolatility) {
       return { 
         status: 'RESTORATION' as Regime, 
@@ -308,7 +371,6 @@ export const storageService = {
       };
     }
 
-    // 3. BUILD: High stability and high wellness
     if (avgWellness > 80 && !moderateVolatility && !negativeTrends) {
       return { 
         status: 'BUILD' as Regime, 
@@ -316,7 +378,6 @@ export const storageService = {
       };
     }
 
-    // 4. ADAPT: Productive absorption of load
     return { 
       status: 'ADAPT' as Regime, 
       reason: 'Stable Adaptation' 
