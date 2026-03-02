@@ -11,7 +11,8 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
     'BUILD': { label: 'BUILD REGIME', color: 'from-emerald-500/20 to-emerald-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'Optimal Resilience & High Capacity' },
     'ADAPT': { label: 'ADAPT REGIME', color: 'from-sky-400/20 to-indigo-500/20', text: 'text-sky-600', border: 'border-sky-100', sub: 'Productive Load Absorption' },
     'RESTORATION': { label: 'RESTORATION', color: 'from-amber-400/20 to-orange-500/20', text: 'text-amber-600', border: 'border-amber-100', sub: 'System Pivot: Prioritize Support' },
-    'CAUTION': { label: 'CAUTION', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'High Turbulence: Regime Change Detected' }
+    'CAUTION': { label: 'CAUTION', color: 'from-rose-500/20 to-red-600/20', text: 'text-rose-600', border: 'border-rose-100', sub: 'High Turbulence: Regime Change Detected' },
+    'CALIBRATING': { label: 'CALIBRATING', color: 'from-slate-400/20 to-slate-500/20', text: 'text-slate-600', border: 'border-slate-100', sub: 'Building Baseline: System Learning' }
   };
 
   const currentStatus = statusMap[regime.status as keyof typeof statusMap] || statusMap.ADAPT;
@@ -36,7 +37,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
       </div>
 
       <div className="px-4">
-        <Insights entries={entries} personalityCalibration={user.personalityCalibration} />
+        <Insights entries={entries} user={user} personalityCalibration={user.personalityCalibration} />
       </div>
 
       <div className="py-20 relative">
@@ -68,7 +69,15 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
       )}
 
       <div className="bg-white/40 p-8 rounded-[2.5rem] mx-4 border border-white/20 text-left space-y-4">
-        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Today's Audit Summary</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Today's Audit Summary</h3>
+          {entries.length > 0 && entries[0].readByCoach && (
+            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+              Read by Coach
+            </span>
+          )}
+        </div>
         {entries.length > 0 ? (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
