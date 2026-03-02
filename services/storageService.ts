@@ -191,7 +191,7 @@ export const storageService = {
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
       feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
-      readByCoach: d.read_by_coach
+      readByCoach: !!d.read_by_coach
     }));
   },
 
@@ -203,7 +203,7 @@ export const storageService = {
       sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
       feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
-      readByCoach: d.read_by_coach
+      readByCoach: !!d.read_by_coach
     }));
   },
 
@@ -253,7 +253,7 @@ export const storageService = {
       receiverId: d.receiver_id,
       text: d.text,
       timestamp: d.created_at,
-      read: d.read
+      read: !!d.read
     }));
   },
 
