@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, Message } from '../types';
 import { storageService } from '../services/storageService';
 
@@ -12,7 +12,7 @@ const CoachCorner: React.FC<CoachCornerProps> = ({ user }) => {
   const [msg, setMsg] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!user.coachId) return;
     try {
       const data = await storageService.getMessages(user.id);
@@ -22,15 +22,18 @@ const CoachCorner: React.FC<CoachCornerProps> = ({ user }) => {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [user.id, user.coachId]);
 
   useEffect(() => {
     if (user.coachId) {
-      fetchMessages();
+      const init = async () => {
+        await fetchMessages();
+      };
+      init();
       const interval = setInterval(fetchMessages, 10000); // Poll every 10s
       return () => clearInterval(interval);
     }
-  }, [user.id, user.coachId]);
+  }, [user.coachId, fetchMessages]);
 
   const send = async () => {
     if (!msg.trim() || !user.coachId) return;
