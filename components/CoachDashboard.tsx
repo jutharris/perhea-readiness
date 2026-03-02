@@ -45,7 +45,7 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
         <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden divide-y divide-slate-50 shadow-sm">
           {athletes.map((a: any) => {
             const athleteEntries = allEntries.filter((e: any) => e.userId === a.id);
-            const hasUnreadComment = athleteEntries.some((e: any) => e.comments && !e.readByCoach);
+            const hasUnreadComment = athleteEntries.some((e: any) => (e.comments && e.comments.trim().length > 0) && e.readByCoach !== true);
             const hasUnreadMessage = unreadMessageIds.includes(a.id);
             const hasUnread = hasUnreadComment || hasUnreadMessage;
             
