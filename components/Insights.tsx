@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { WellnessEntry, UserRole, PersonalityCalibration, InteractionType } from '../types';
+import { WellnessEntry, UserRole, PersonalityCalibration, InteractionType, User } from '../types';
 import { getAthleteAnalysis, getAthleteInteraction } from '../services/geminiService';
+import { storageService } from '../services/storageService';
 
-const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalityCalibration?: PersonalityCalibration }> = ({ 
+const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole; personalityCalibration?: PersonalityCalibration }> = ({ 
   entries, 
+  user,
   role = 'ATHLETE',
   personalityCalibration = 'BALANCED'
 }) => {
@@ -11,7 +13,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
   const [loading, setLoading] = useState(false);
   const [interactionResponse, setInteractionResponse] = useState<string | null>(null);
   const [interactionLoading, setInteractionLoading] = useState(false);
-  const [showInput, setShowInput] = useState<InteractionType | null>(null);
+  const [showInput, setShowInput] = useState<InteractionType | 'MESSAGE_COACH' | null>(null);
   const [userInput, setUserInput] = useState('');
 
   useEffect(() => {
@@ -58,17 +60,26 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
     }
   }, [entries, role, personalityCalibration]);
 
-  const handleInteraction = async (type: InteractionType, message?: string) => {
+  const handleInteraction = async (type: InteractionType | 'MESSAGE_COACH', message?: string) => {
     setInteractionLoading(true);
     setInteractionResponse(null);
     try {
-      const resJson = await getAthleteInteraction(entries, type, message, personalityCalibration);
-      const res = JSON.parse(resJson);
-      setInteractionResponse(res.text);
-      if (res.inflectionPoint) {
-        localStorage.setItem('ai_inflection_point', JSON.stringify(res.inflectionPoint));
-        // Dispatch custom event to notify Trends tab
-        window.dispatchEvent(new CustomEvent('ai_inflection_updated'));
+      if (type === 'MESSAGE_COACH') {
+        if (!user.coachId) {
+          setInteractionResponse("You don't have a coach assigned yet.");
+          return;
+        }
+        await storageService.sendMessage(user.id, user.coachId, message || '');
+        setInteractionResponse("Message sent to your coach.");
+      } else {
+        const resJson = await getAthleteInteraction(entries, type, message, personalityCalibration);
+        const res = JSON.parse(resJson);
+        setInteractionResponse(res.text);
+        if (res.inflectionPoint) {
+          localStorage.setItem('ai_inflection_point', JSON.stringify(res.inflectionPoint));
+          // Dispatch custom event to notify Trends tab
+          window.dispatchEvent(new CustomEvent('ai_inflection_updated'));
+        }
       }
       setShowInput(null);
       setUserInput('');
@@ -128,6 +139,13 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
               >
                 Data Query
               </button>
+              <button 
+                onClick={() => setShowInput('MESSAGE_COACH')}
+                disabled={interactionLoading}
+                className="text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors border border-indigo-400/30 px-2 py-1 rounded"
+              >
+                Message Coach
+              </button>
             </div>
 
             {showInput && (
@@ -135,7 +153,11 @@ const Insights: React.FC<{ entries: WellnessEntry[]; role?: UserRole; personalit
                 <textarea 
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
-                  placeholder={showInput === 'ADD_CONTEXT' ? "e.g., 'I had a late flight' or 'Work is peaking'..." : "e.g., 'What was my avg sleep hours last month?'..."}
+                  placeholder={
+                    showInput === 'MESSAGE_COACH' ? "Send a direct message to your coach..." :
+                    showInput === 'ADD_CONTEXT' ? "e.g., 'I had a late flight' or 'Work is peaking'..." : 
+                    "e.g., 'What was my avg sleep hours last month?'..."
+                  }
                   className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition-colors resize-none"
                 />
                 <div className="flex gap-2">
