@@ -27,9 +27,10 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
   
   if (entryCount <= 7) {
     lookback = entryCount;
-    calibrationNote = "System is in Initial Calibration Mode. Insights get sharper every week.";
-  } else if (entryCount <= 15) {
+    calibrationNote = "System is in Initial Calibration Mode (Days 1-7). Focus on building baseline and establishing reporting consistency.";
+  } else if (entryCount <= 14) {
     lookback = 7;
+    calibrationNote = "System is in Binary Calibration Phase (Days 8-14). Only 'Adapting' or 'Restoration' regimes are active. Focus on broad system stability.";
   } else if (entryCount <= 29) {
     lookback = 14;
   } else if (entryCount <= 51) {
