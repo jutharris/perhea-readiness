@@ -31,8 +31,15 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     try {
       const data = await storageService.getMessages(athlete.id);
       setMessages(data);
-      // Mark messages from athlete as read
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markMessagesRead = async () => {
+    try {
       await storageService.markMessagesAsRead(coachId, athlete.id);
+      fetchMessages();
     } catch (err) {
       console.error(err);
     }
@@ -40,6 +47,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
 
   const markEntriesRead = async () => {
     const unread = entries.filter((e: WellnessEntry) => e.comments && !e.readByCoach);
+    if (unread.length === 0) return;
     for (const entry of unread) {
       await storageService.markEntryAsRead(entry.id);
     }
@@ -49,7 +57,16 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     fetchTests();
     fetchMessages();
     markEntriesRead();
+    
+    const interval = setInterval(fetchMessages, 10000); // Poll for new messages while viewing athlete
+    return () => clearInterval(interval);
   }, [athlete.id]);
+
+  useEffect(() => {
+    if (showChat) {
+      markMessagesRead();
+    }
+  }, [showChat]);
 
   const updateFocus = async (focus: TrainingFocus) => {
     try {
