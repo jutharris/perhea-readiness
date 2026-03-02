@@ -42,17 +42,33 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
 
       {athletes.length > 0 && (
         <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden divide-y divide-slate-50 shadow-sm">
-          {athletes.map((a: any) => (
-            <div key={a.id} onClick={() => onViewAthlete(a)} className="p-6 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors group">
-              <div>
-                <p className="font-bold text-slate-900">{a.firstName} {a.lastName}</p>
-                <p className="text-xs text-slate-400">{a.email}</p>
+          {athletes.map((a: any) => {
+            const athleteEntries = allEntries.filter((e: any) => e.userId === a.id);
+            const hasUnread = athleteEntries.some((e: any) => e.comments && !e.readByCoach);
+            
+            return (
+              <div key={a.id} onClick={() => onViewAthlete(a)} className="p-6 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors group">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-400">
+                      {a.firstName[0]}{a.lastName[0]}
+                    </div>
+                    {hasUnread && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full border-2 border-white animate-pulse"></div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900">{a.firstName} {a.lastName}</p>
+                    <p className="text-xs text-slate-400">{a.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasUnread && <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mr-2">New Note</span>}
+                  <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
