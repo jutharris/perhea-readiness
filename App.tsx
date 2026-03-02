@@ -97,6 +97,18 @@ const App: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      refreshData(user);
+      
+      // Add background polling for coaches to keep dashboard dots fresh
+      if (user.role === 'COACH') {
+        const interval = setInterval(() => refreshData(user), 15000);
+        return () => clearInterval(interval);
+      }
+    }
+  }, [user, refreshData]);
+
   const handleAuthChange = useCallback(async (session: any) => {
     if (!session?.user) {
       setUser(null);
