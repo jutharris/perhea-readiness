@@ -79,7 +79,7 @@ const App: React.FC = () => {
         setCoachedAthletes(coachedData);
         
         const unreadFromAthletes = msgs
-          .filter(m => m.receiverId === currentUser.id && !m.read)
+          .filter(m => m.receiverId === currentUser.id && m.read !== true)
           .map(m => m.senderId);
         setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
       } else if (currentUser.role === 'ATHLETE') {
