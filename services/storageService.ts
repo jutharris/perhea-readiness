@@ -291,12 +291,12 @@ export const storageService = {
         .update({ read: true })
         .eq('receiver_id', coachId)
         .eq('sender_id', athleteId)
-        .eq('read', false),
+        .neq('read', true),
       supabase!
         .from('wellness_entries')
         .update({ read_by_coach: true })
         .eq('user_id', athleteId)
-        .eq('read_by_coach', false)
+        .neq('read_by_coach', true)
     ]);
   },
 
