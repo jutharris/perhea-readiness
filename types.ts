@@ -55,7 +55,7 @@ export interface InteractionResponse {
   text: string;
 }
 
-export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST';
+export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS';
 
 export interface SubmaxTest {
   id: string;
