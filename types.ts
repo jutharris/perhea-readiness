@@ -1,9 +1,18 @@
 
 export type UserRole = 'ATHLETE' | 'COACH' | 'PENDING';
 export type SessionType = 'TRAINING' | 'COMPETITION' | 'TRAVEL' | 'REST';
-export type Regime = 'BUILD' | 'ADAPT' | 'RESTORATION' | 'CAUTION';
+export type Regime = 'BUILD' | 'ADAPT' | 'RESTORATION' | 'CAUTION' | 'CALIBRATING';
 export type PersonalityCalibration = 'STOIC' | 'BALANCED' | 'EXPRESSIVE';
 export type TrainingFocus = 'SPEED' | 'POWER' | 'STRENGTH' | 'AEROBIC_EFFICIENCY' | 'FREQUENCY' | 'VOLUME_TOLERANCE';
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  timestamp: string;
+  read: boolean;
+}
 
 export interface User {
   id: string;
@@ -36,6 +45,7 @@ export interface WellnessEntry {
   injured: boolean;
   menstrualCycle: boolean;
   comments: string;
+  readByCoach?: boolean;
 }
 
 export type InteractionType = 'EXPLAIN_LOGIC' | 'ADD_CONTEXT' | 'DATA_QUERY';
