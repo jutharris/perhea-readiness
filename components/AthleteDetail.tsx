@@ -251,6 +251,50 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
       
       <Dashboard entries={entries} user={athlete} onNewReport={() => {}} hideAction />
 
+      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Contextual Chat</h3>
+          <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Direct Line</span>
+        </div>
+        
+        <div className="space-y-4 max-h-64 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          {messages.length === 0 ? (
+            <p className="text-xs text-slate-400 italic text-center py-4">No messages yet. Start the conversation below.</p>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className={`flex ${m.senderId === coachId ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] p-3 rounded-2xl text-xs font-medium shadow-sm ${
+                  m.senderId === coachId 
+                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                    : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }`}>
+                  {m.text}
+                  <div className={`text-[8px] mt-1 opacity-60 ${m.senderId === coachId ? 'text-right' : 'text-left'}`}>
+                    {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <textarea 
+            value={msg} 
+            onChange={e => setMsg(e.target.value)} 
+            placeholder="Send guidance or a quick note..." 
+            className="w-full h-24 p-4 bg-slate-50 rounded-2xl outline-none text-sm border border-slate-100 focus:border-indigo-300 transition-colors resize-none" 
+          />
+          <button 
+            onClick={send} 
+            disabled={!msg.trim()}
+            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100"
+          >
+            Send Message
+          </button>
+        </div>
+      </div>
+
       {comparisonData && (
         <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl animate-in zoom-in-95 duration-500">
           <div className="flex justify-between items-center">
@@ -419,50 +463,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
           </div>
         </div>
       )}
-
-      <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-black text-slate-900 uppercase tracking-widest">Contextual Chat</h3>
-          <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Direct Line</span>
-        </div>
-        
-        <div className="space-y-4 max-h-64 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100">
-          {messages.length === 0 ? (
-            <p className="text-xs text-slate-400 italic text-center py-4">No messages yet. Start the conversation below.</p>
-          ) : (
-            messages.map((m) => (
-              <div key={m.id} className={`flex ${m.senderId === coachId ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] p-3 rounded-2xl text-xs font-medium shadow-sm ${
-                  m.senderId === coachId 
-                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-                }`}>
-                  {m.text}
-                  <div className={`text-[8px] mt-1 opacity-60 ${m.senderId === coachId ? 'text-right' : 'text-left'}`}>
-                    {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="space-y-4">
-          <textarea 
-            value={msg} 
-            onChange={e => setMsg(e.target.value)} 
-            placeholder="Send guidance or a quick note..." 
-            className="w-full h-24 p-4 bg-slate-50 rounded-2xl outline-none text-sm border border-slate-100 focus:border-indigo-300 transition-colors resize-none" 
-          />
-          <button 
-            onClick={send} 
-            disabled={!msg.trim()}
-            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl uppercase tracking-widest text-xs shadow-lg shadow-indigo-100 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100"
-          >
-            Send Message
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
