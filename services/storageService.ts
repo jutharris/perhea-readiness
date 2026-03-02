@@ -347,6 +347,54 @@ export const storageService = {
     }));
   },
 
+  getTrends: (entries: WellnessEntry[], days: number) => {
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(now.getDate() - days);
+    
+    const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
+    if (recent.length === 0) return null;
+
+    const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
+      const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    };
+
+    return {
+      rpe: getAvg(recent, 'lastSessionRPE'),
+      stress: getAvg(recent, 'stress'),
+      sleep: getAvg(recent, 'sleepQuality'),
+      energy: getAvg(recent, 'energy'),
+      soreness: getAvg(recent, 'soreness'),
+      social: getAvg(recent, 'social'),
+      sleepHours: getAvg(recent, 'sleepHours')
+    };
+  },
+
+  getAverages: (entries: WellnessEntry[], days: number) => {
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(now.getDate() - days);
+    
+    const recent = entries.filter(e => new Date(e.isoDate) >= cutoff);
+    if (recent.length === 0) return null;
+
+    const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
+      const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    };
+
+    return {
+      rpe: getAvg(recent, 'lastSessionRPE'),
+      stress: getAvg(recent, 'stress'),
+      sleep: getAvg(recent, 'sleepQuality'),
+      energy: getAvg(recent, 'energy'),
+      soreness: getAvg(recent, 'soreness'),
+      social: getAvg(recent, 'social'),
+      sleepHours: getAvg(recent, 'sleepHours')
+    };
+  },
+
   getLookbackDays: (entryCount: number) => {
     if (entryCount <= 7) return entryCount;
     if (entryCount <= 15) return 7;
