@@ -143,13 +143,6 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
               >
                 Data Query
               </button>
-              <button 
-                onClick={() => setShowInput('MESSAGE_COACH')}
-                disabled={interactionLoading}
-                className="text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors border border-indigo-400/30 px-2 py-1 rounded"
-              >
-                Message Coach
-              </button>
             </div>
 
             {showInput && (
