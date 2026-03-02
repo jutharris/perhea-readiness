@@ -287,7 +287,7 @@ export const storageService = {
     checkConfig();
     // Simplified: Just set everything to true for this athlete/coach pair.
     // Setting true to true is a no-op in the DB but ensures NULLs/False are caught.
-    await Promise.all([
+    const [msgRes, entryRes] = await Promise.all([
       supabase!
         .from('messages')
         .update({ read: true })
@@ -298,6 +298,8 @@ export const storageService = {
         .update({ read_by_coach: true })
         .eq('user_id', athleteId)
     ]);
+    if (msgRes.error) throw msgRes.error;
+    if (entryRes.error) throw entryRes.error;
   },
 
   saveSubmaxTest: async (testData: Partial<SubmaxTest>) => {
