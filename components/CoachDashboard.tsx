@@ -75,11 +75,6 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, onViewAthl
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasUnread && (
-                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mr-2">
-                      {hasUnreadMessage ? 'New Message' : 'New Note'}
-                    </span>
-                  )}
                   <span className="text-indigo-600 font-black text-xs opacity-0 group-hover:opacity-100 transition-opacity">VIEW PROFILE</span>
                 </div>
               </div>
