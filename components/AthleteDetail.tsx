@@ -39,7 +39,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const markMessagesRead = async () => {
     try {
       await storageService.markMessagesAsRead(coachId, athlete.id);
-      fetchMessages();
+      await fetchMessages();
     } catch (err) {
       console.error(err);
     }
