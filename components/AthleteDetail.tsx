@@ -1,9 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, WellnessEntry, SubmaxTest, TrainingFocus, PersonalityCalibration, Message } from '../types';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area
+} from 'recharts';
+import { 
+  Activity, MessageSquare, Calendar, LayoutGrid, 
+  ChevronRight, ArrowLeft, Filter, Zap, Info,
+  CheckCircle2, AlertCircle, Clock, TrendingUp, TrendingDown, Minus
+} from 'lucide-react';
 import Dashboard from './Dashboard';
 import Insights from './Insights';
 import SubmaxTestUpload from './SubmaxTestUpload';
 import { storageService } from '../services/storageService';
+
+const TrendIndicator = ({ current, previous, inverse = false }: { current: number; previous: number; inverse?: boolean }) => {
+  if (!previous) return <Minus className="w-3 h-3 text-slate-300" />;
+  const diff = current - previous;
+  const isGood = inverse ? diff < 0 : diff > 0;
+  if (Math.abs(diff) < 0.1) return <Minus className="w-3 h-3 text-slate-300" />;
+  return isGood ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />;
+};
 
 const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachId, onRefresh, onBack }) => {
   const [athlete, setAthlete] = useState<User>(initialAthlete);
@@ -14,6 +31,34 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [comparisonId, setComparisonId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [activeLines, setActiveLines] = useState(['rpe', 'stress']);
+  const [trendWindow, setTrendWindow] = useState<7 | 14 | 28>(7);
+
+  const trendData = useMemo(() => {
+    return [...entries].reverse().map(e => ({
+      date: new Date(e.isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      rpe: e.lastSessionRPE,
+      stress: e.stress,
+      sleep: e.sleepQuality,
+      energy: e.energy,
+      soreness: e.soreness,
+      social: e.social,
+      rawDate: e.isoDate
+    }));
+  }, [entries]);
+
+  const averages = useMemo(() => {
+    const getAvg = (days: number) => storageService.getAverages(entries, days);
+    return {
+      d7: getAvg(7),
+      d14: getAvg(14),
+      d28: getAvg(28)
+    };
+  }, [entries]);
+
+  const toggleLine = (line: string) => {
+    setActiveLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line]);
+  };
 
   const fetchTests = async () => {
     setLoading(true);
@@ -193,96 +238,289 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   }, [athleteAge, tests]);
 
   return (
-    <div className="space-y-8">
-      {showUpload && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl">
-            <SubmaxTestUpload 
-              user={athlete} 
-              onComplete={() => {
-                setShowUpload(false);
-                fetchTests();
-              }} 
-              onCancel={() => setShowUpload(false)} 
-            />
+    <div className="flex flex-col h-full bg-[#F8FAFC] text-slate-900 font-sans">
+      {/* Top Header / Navigation */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{athlete.firstName} {athlete.lastName}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
+                Focus: {athlete.trainingFocus?.replace('_', ' ') || 'NONE'}
+              </span>
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded">
+                Style: {athlete.personalityCalibration || 'BALANCED'}
+              </span>
+            </div>
           </div>
         </div>
-      )}
-      <button onClick={onBack} className="text-xs font-black text-slate-400 uppercase tracking-widest">Back</button>
-      
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black text-slate-900">{athlete.firstName} {athlete.lastName}</h2>
-          <div className="flex items-center gap-2">
-            {athleteAge && athleteAge >= 45 && (
-              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-100">
-                <span className="text-xs font-black uppercase tracking-widest">Biological Resilience</span>
-                {stabilityIndex !== null && (
-                  <span className="text-[10px] font-bold opacity-60">Index: {stabilityIndex.toFixed(0)}</span>
-                )}
-              </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setShowChat(true)}
+            className="relative px-6 py-3 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-xl uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
+          >
+            Open Chat
+            {unreadCount > 0 && (
+              <span className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></span>
             )}
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
-              Focus: {athlete.trainingFocus?.replace('_', ' ') || 'NONE'}
-            </span>
-            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded">
-              Style: {athlete.personalityCalibration || 'BALANCED'}
-            </span>
-          </div>
-        </div>
-        <button 
-          onClick={() => setShowChat(true)}
-          className="relative px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform flex items-center gap-2"
-        >
-          Open Chat
-          {unreadCount > 0 && (
-            <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-          )}
-        </button>
-      </div>
-
-      {/* Athlete Configuration Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Reporting Style</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-4">Calibrate AI & Volatility Sensitivity</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(['STOIC', 'BALANCED', 'EXPRESSIVE'] as PersonalityCalibration[]).map(c => (
-              <button
-                key={c}
-                onClick={() => updateCalibration(c)}
-                className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${athlete.personalityCalibration === c ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'}`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Submax Focus</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-4">Define Primary Adaptation Goal</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'] as TrainingFocus[]).map(f => (
-              <button
-                key={f}
-                onClick={() => updateFocus(f)}
-                className={`py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border-2 ${athlete.trainingFocus === f ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
-              >
-                {f.replace('_', ' ')}
-              </button>
-            ))}
-          </div>
+          </button>
+          <button 
+            onClick={() => setShowUpload(true)}
+            className="px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
+          >
+            Upload Submax
+          </button>
         </div>
       </div>
-      
-      <Dashboard entries={entries} user={athlete} onNewReport={() => {}} hideAction />
 
-      {/* Chat Side Drawer */}
+      <div className="grid grid-cols-12 gap-8">
+        {/* Left Column: Command Center Stage */}
+        <div className="col-span-12 lg:col-span-8 space-y-8">
+          {/* Main Trend Engine */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Master Trend Engine</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Longitudinal Covariance Analysis</p>
+              </div>
+              <div className="flex gap-2">
+                {['rpe', 'stress', 'sleep', 'energy', 'soreness'].map(key => (
+                  <button 
+                    key={key}
+                    onClick={() => toggleLine(key)}
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                      activeLines.includes(key) 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-8 h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #F1F5F9', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' }}
+                  />
+                  {activeLines.includes('rpe') && <Line type="monotone" dataKey="rpe" stroke="#6366F1" strokeWidth={3} dot={{ r: 4, fill: '#6366F1' }} name="RPE" />}
+                  {activeLines.includes('stress') && <Line type="monotone" dataKey="stress" stroke="#F43F5E" strokeWidth={2} strokeDasharray="5 5" dot={false} name="STRESS" />}
+                  {activeLines.includes('sleep') && <Line type="monotone" dataKey="sleep" stroke="#10B981" strokeWidth={2} dot={false} name="SLEEP" />}
+                  {activeLines.includes('energy') && <Line type="monotone" dataKey="energy" stroke="#F59E0B" strokeWidth={2} dot={false} name="ENERGY" />}
+                  {activeLines.includes('soreness') && <Line type="monotone" dataKey="soreness" stroke="#8B5CF6" strokeWidth={2} dot={false} name="SORENESS" />}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t border-slate-100 grid grid-cols-3 gap-8">
+              {[
+                { label: '7-Day Trend', data: averages.d7, prev: averages.d14 },
+                { label: '14-Day Trend', data: averages.d14, prev: averages.d28 },
+                { label: '28-Day Trend', data: averages.d28, prev: null }
+              ].map((t, i) => (
+                <div key={i} className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.label}</h4>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">RPE</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-black text-slate-900">{t.data?.rpe.toFixed(1)}</span>
+                        {t.prev && <TrendIndicator current={t.data!.rpe} previous={t.prev.rpe} inverse />}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">Stress</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-black text-slate-900">{t.data?.stress.toFixed(1)}</span>
+                        {t.prev && <TrendIndicator current={t.data!.stress} previous={t.prev.stress} inverse />}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">Sleep</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-black text-slate-900">{t.data?.sleep.toFixed(1)}</span>
+                        {t.prev && <TrendIndicator current={t.data!.sleep} previous={t.prev.sleep} />}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase">Energy</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-black text-slate-900">{t.data?.energy.toFixed(1)}</span>
+                        {t.prev && <TrendIndicator current={t.data!.energy} previous={t.prev.energy} />}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Submax Performance Section */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+            <div className="flex justify-between items-end">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Submax Performance</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Objective Physiological Markers</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tests.slice(0, 4).map((test, idx) => {
+                const analysis = getTestAnalysis(test, idx);
+                return (
+                  <div key={test.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer" onClick={() => idx > 0 && setComparisonId(test.id)}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black bg-indigo-100 text-indigo-600 px-2 py-1 rounded uppercase tracking-widest">{test.sport}</span>
+                        <p className="text-[10px] font-bold text-slate-500">{new Date(test.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-black ${analysis.color}`}>
+                          {analysis.change > 0 ? '+' : ''}{analysis.change.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Avg HR</p>
+                        <p className="text-xs font-black text-slate-900">{Math.round(test.summary?.hr_avg || 0)} bpm</p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Floor</p>
+                        <p className="text-xs font-black text-slate-900">
+                          {test.sport === 'bike' ? `${Math.round(test.summary?.power_avg || 0)}W` : test.summary?.split_range_mmss}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Insights & Mirror */}
+        <div className="col-span-12 lg:col-span-4 space-y-8">
+          {/* AI Audit History */}
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6">
+            <div className="flex items-center gap-3">
+              <Zap className="w-5 h-5 text-indigo-400" />
+              <h3 className="text-sm font-black uppercase tracking-widest">AI Audit History</h3>
+            </div>
+            
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+              {entries.slice(0, 7).map((entry, i) => (
+                <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black text-white/40 uppercase">{new Date(entry.isoDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">RPE {entry.lastSessionRPE}</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-white/70 italic">
+                    {entry.comments || "No notes logged for this entry."}
+                  </p>
+                </div>
+              ))}
+            </div>
+            
+            <div className="pt-4 border-t border-white/10">
+              <Insights entries={entries} user={athlete} role="COACH" personalityCalibration={athlete.personalityCalibration} />
+            </div>
+          </div>
+
+          {/* Athlete Mirror (Simplified Dashboard) */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center gap-3">
+              <LayoutGrid className="w-5 h-5 text-slate-400" />
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Athlete Mirror</h3>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Current Status</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black">
+                    {entries[0]?.lastSessionRPE || 0}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Latest RPE</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">{entries[0]?.sessionType || 'REST'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { label: 'Sleep Quality', val: entries[0]?.sleepQuality, max: 7 },
+                  { label: 'Energy Level', val: entries[0]?.energy, max: 7 },
+                  { label: 'Stress Level', val: entries[0]?.stress, max: 7 },
+                  { label: 'Soreness', val: entries[0]?.soreness, max: 7 }
+                ].map(m => (
+                  <div key={m.label} className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      <span>{m.label}</span>
+                      <span>{m.val || 0}/{m.max}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${((m.val || 0) / m.max) * 100}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center gap-3">
+              <Filter className="w-5 h-5 text-slate-400" />
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Configuration</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Reporting Style</p>
+                <div className="grid grid-cols-3 gap-1">
+                  {['STOIC', 'BALANCED', 'EXPRESSIVE'].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => updateCalibration(c as PersonalityCalibration)}
+                      className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${athlete.personalityCalibration === c ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Focus</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {['SPEED', 'POWER', 'STRENGTH', 'AEROBIC_EFFICIENCY', 'VOLUME_TOLERANCE'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => updateFocus(f as TrainingFocus)}
+                      className={`py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${athlete.trainingFocus === f ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                    >
+                      {f.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlays */}
       {showChat && (
         <div className="fixed inset-0 z-[200] flex justify-end">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowChat(false)}></div>
@@ -303,11 +541,9 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4">
                   <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
+                    <MessageSquare className="w-8 h-8 text-slate-300" />
                   </div>
-                  <p className="text-xs text-slate-400 italic font-medium">No messages yet. Start the conversation below.</p>
+                  <p className="text-xs text-slate-400 italic font-medium">No messages yet.</p>
                 </div>
               ) : (
                 messages.map((m) => (
@@ -335,7 +571,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                 <textarea 
                   value={msg} 
                   onChange={e => setMsg(e.target.value)} 
-                  placeholder="Send guidance or a quick note..." 
+                  placeholder="Send guidance..." 
                   className="w-full h-32 p-4 bg-slate-50 rounded-2xl outline-none text-sm border border-slate-100 focus:border-indigo-300 transition-colors resize-none pr-12" 
                 />
                 <button 
@@ -343,9 +579,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                   disabled={!msg.trim()}
                   className="absolute bottom-4 right-4 p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 hover:scale-105 transition-all disabled:opacity-50 disabled:scale-100"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
+                  <Zap className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -353,171 +587,75 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         </div>
       )}
 
-      {comparisonData && (
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl animate-in zoom-in-95 duration-500">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-black uppercase tracking-widest">Longitudinal Comparison</h3>
-            <button onClick={() => setComparisonId(null)} className="text-[10px] font-black text-white/40 hover:text-white uppercase tracking-widest">Close</button>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Current Build</p>
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                <p className="text-xs font-bold">{new Date(comparisonData.testA.createdAt).toLocaleDateString()}</p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Aerobic Floor</span>
-                    <span className="font-black">{comparisonData.mA.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Avg HR</span>
-                    <span className="font-black">{Math.round(comparisonData.mA.hr || 0)}</span>
-                  </div>
-                </div>
-              </div>
+      {comparisonId && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white space-y-6 shadow-2xl max-w-2xl w-full animate-in zoom-in-95 duration-500">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-black uppercase tracking-widest">Longitudinal Comparison</h3>
+              <button onClick={() => setComparisonId(null)} className="text-[10px] font-black text-white/40 hover:text-white uppercase tracking-widest">Close</button>
             </div>
             
-            <div className="space-y-4">
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Historical Reference</p>
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                <p className="text-xs font-bold">{new Date(comparisonData.testB.createdAt).toLocaleDateString()}</p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Aerobic Floor</span>
-                    <span className="font-black">{comparisonData.mB.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="opacity-60">Avg HR</span>
-                    <span className="font-black">{Math.round(comparisonData.mB.hr || 0)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-white/10">
-            <p className="text-xs font-bold text-indigo-400">
-              Analysis: {comparisonData.mA.total > comparisonData.mB.total ? 'Aerobic floor has risen.' : 'Biological resilience maintained.'} 
-              The athlete is currently {Math.abs(((comparisonData.mA.total - comparisonData.mB.total) / comparisonData.mB.total) * 100).toFixed(1)}% {comparisonData.mA.total > comparisonData.mB.total ? 'more' : 'less'} efficient than the reference point.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {coachBrief && coachBrief.length > 0 && (
-        <div className="bg-indigo-900 p-8 rounded-[2.5rem] text-white space-y-4 shadow-2xl">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-black uppercase tracking-widest">Coach Brief: Covariance Detected</h3>
-          </div>
-          <p className="text-sm font-medium opacity-80 leading-relaxed">
-            The system has detected a significant performance drop correlated with the following trends in the last 21 days:
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {coachBrief.map((c: any, i: number) => (
-              <div key={i} className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{c.label}</p>
-                <p className="text-sm font-bold">
-                  {c.diff > 0 ? 'Increased' : 'Decreased'} by {Math.abs(c.diff).toFixed(1)} pts
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">
-            *This brief is generated by analyzing the covariance between submax results and daily wellness trends.
-          </p>
-        </div>
-      )}
-      
-      {tests.length === 0 && (
-        <div className="bg-white p-10 rounded-[2.5rem] border-2 border-dashed border-slate-100 text-center space-y-4">
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No Submax Data Yet</p>
-          <button 
-            onClick={() => setShowUpload(true)}
-            className="px-8 py-4 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
-          >
-            Upload First Test
-          </button>
-        </div>
-      )}
-
-      {tests.length > 0 && (
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 space-y-6">
-          <div className="flex justify-between items-end">
-            <div>
-              <h3 className="text-lg font-black text-slate-900">Submax Performance</h3>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Objective Physiological Markers</p>
-            </div>
-            <button 
-              onClick={() => setShowUpload(true)}
-              className="px-6 py-3 bg-indigo-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 transition-transform"
-            >
-              Upload New Test
-            </button>
-          </div>
-          
-          <div className="space-y-4">
-            {tests.map((test, idx) => {
-              const analysis = getTestAnalysis(test, idx);
-              return (
-                <div key={test.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black bg-indigo-100 text-indigo-600 px-2 py-1 rounded uppercase tracking-widest">{test.sport}</span>
-                      <p className="text-xs font-bold text-slate-500">{new Date(test.createdAt).toLocaleDateString()}</p>
-                      {test.summary?.compliance === 'WARNING' && (
-                        <span className="text-[8px] font-black bg-amber-100 text-amber-600 px-2 py-1 rounded uppercase tracking-widest">Protocol Warning</span>
-                      )}
-                      {test.summary?.compliance === 'NON_COMPLIANT' && (
-                        <span className="text-[8px] font-black bg-rose-100 text-rose-600 px-2 py-1 rounded uppercase tracking-widest">Invalid Protocol</span>
-                      )}
-                      {idx > 0 && test.summary?.compliance !== 'NON_COMPLIANT' && (
-                        <button 
-                          onClick={() => setComparisonId(test.id)}
-                          className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
-                        >
-                          Compare to Latest
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{analysis.label}</p>
-                      <p className={`text-lg font-black ${analysis.color}`}>
-                        {analysis.change > 0 ? '+' : ''}{analysis.change.toFixed(1)}%
-                      </p>
+            {comparisonData && (
+              <>
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Current Build</p>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <p className="text-xs font-bold">{new Date(comparisonData.testA.createdAt).toLocaleDateString()}</p>
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="opacity-60">Aerobic Floor</span>
+                          <span className="font-black">{comparisonData.mA.total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="opacity-60">Avg HR</span>
+                          <span className="font-black">{Math.round(comparisonData.mA.hr || 0)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Avg HR</p>
-                      <p className="text-sm font-black text-slate-900">{Math.round(test.summary?.hr_avg || 0)} <span className="text-[10px] opacity-40">bpm</span></p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Floor</p>
-                      <p className="text-sm font-black text-slate-900">
-                        {test.sport === 'bike' ? Math.round(test.summary?.power_avg || 0) : test.summary?.split_range_mmss}
-                        <span className="text-[10px] opacity-40"> {test.sport === 'bike' ? 'W' : ''}</span>
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aerobic Drift</p>
-                      <p className="text-sm font-black text-slate-900">
-                        {test.sport === 'bike' ? 
-                          `${Math.abs(test.summary?.eff_change_pct_seg3_vs_seg1 || 0).toFixed(1)}%` : 
-                          test.summary?.split_range_mmss}
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Focus</p>
-                      <p className="text-[10px] font-black text-slate-900 uppercase truncate">
-                        {athlete.trainingFocus || 'NONE'}
-                      </p>
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Historical Reference</p>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                      <p className="text-xs font-bold">{new Date(comparisonData.testB.createdAt).toLocaleDateString()}</p>
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="opacity-60">Aerobic Floor</span>
+                          <span className="font-black">{comparisonData.mB.total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="opacity-60">Avg HR</span>
+                          <span className="font-black">{Math.round(comparisonData.mB.hr || 0)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="pt-4 border-t border-white/10">
+                  <p className="text-xs font-bold text-indigo-400">
+                    Analysis: {comparisonData.mA.total > comparisonData.mB.total ? 'Aerobic floor has risen.' : 'Biological resilience maintained.'} 
+                    The athlete is currently {Math.abs(((comparisonData.mA.total - comparisonData.mB.total) / comparisonData.mB.total) * 100).toFixed(1)}% {comparisonData.mA.total > comparisonData.mB.total ? 'more' : 'less'} efficient than the reference point.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showUpload && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl">
+            <SubmaxTestUpload 
+              user={athlete} 
+              onComplete={() => {
+                setShowUpload(false);
+                fetchTests();
+              }} 
+              onCancel={() => setShowUpload(false)} 
+            />
           </div>
         </div>
       )}
