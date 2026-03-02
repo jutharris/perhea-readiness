@@ -274,6 +274,15 @@ export const storageService = {
       .eq('id', entryId);
   },
 
+  markEntriesAsRead: async (entryIds: string[]) => {
+    checkConfig();
+    if (entryIds.length === 0) return;
+    await supabase!
+      .from('wellness_entries')
+      .update({ read_by_coach: true })
+      .in('id', entryIds);
+  },
+
   saveSubmaxTest: async (testData: Partial<SubmaxTest>) => {
     checkConfig();
     const { error } = await supabase!.from('submax_tests').insert([{
