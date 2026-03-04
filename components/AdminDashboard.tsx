@@ -4,7 +4,7 @@ import { User } from '../types';
 import { storageService } from '../services/storageService';
 import { 
   Activity, Users, Zap, Shield, 
-  AlertCircle, Clock, 
+  AlertCircle, Clock, Watch,
   Search, ArrowLeft, RefreshCw
 } from 'lucide-react';
 
@@ -39,7 +39,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
     fetchData();
   }, []);
 
-  const toggleStatus = async (userId: string, field: 'isPremium' | 'isFrozen', currentVal: boolean) => {
+  const toggleStatus = async (userId: string, field: 'isPremium' | 'isFrozen' | 'hasWearable', currentVal: boolean) => {
     try {
       setLoading(true);
       await storageService.updateUserStatus(userId, { [field]: !currentVal });
@@ -237,6 +237,9 @@ const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleS
           {user.isFrozen && (
             <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[8px] font-black uppercase rounded-md">FROZEN</span>
           )}
+          {user.hasWearable && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-[8px] font-black uppercase rounded-md">WEARABLE</span>
+          )}
           {user.role === 'ADMIN' && (
             <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase rounded-md">ADMIN</span>
           )}
@@ -281,6 +284,13 @@ const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleS
             title={user.isFrozen ? "Unfreeze AI" : "Freeze AI"}
           >
             <Zap className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onToggleStatus(user.id, 'hasWearable', user.hasWearable || false)}
+            className={`p-2 rounded-lg transition-colors ${user.hasWearable ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}
+            title={user.hasWearable ? "Disable Wearable" : "Enable Wearable"}
+          >
+            <Watch className="w-4 h-4" />
           </button>
           <button 
             onClick={() => onQueueAlert(user.id)}
