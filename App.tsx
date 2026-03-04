@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from './components/Layout';
 import WellnessForm from './components/WellnessForm';
 import Dashboard from './components/Dashboard';
-import Insights from './components/Insights';
 import CoachDashboard from './components/CoachDashboard';
 import AthleteDetail from './components/AthleteDetail';
 import Onboarding from './components/Onboarding';
@@ -12,9 +11,10 @@ import Trends from './components/Trends';
 import SubmaxLab from './components/SubmaxLab';
 import AuditProcessingOverlay from './components/AuditProcessingOverlay';
 import CoachCorner from './components/CoachCorner';
+import AdminDashboard from './components/AdminDashboard';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
-import { User, WellnessEntry, View, UserRole } from './types';
+import { User, WellnessEntry, View } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -69,7 +69,20 @@ const App: React.FC = () => {
     if (!isSupabaseConfigured()) return;
     setIsRefreshing(true);
     try {
-      if (currentUser.role === 'COACH') {
+      if (currentUser.role === 'ADMIN') {
+        const [entriesData, coachedData, msgs] = await Promise.all([
+          storageService.getAllEntries(),
+          storageService.getAllUsers(),
+          storageService.getMessages(currentUser.id)
+        ]);
+        setAllEntries(entriesData);
+        setCoachedAthletes(coachedData);
+        
+        const unreadFromAthletes = msgs
+          .filter(m => m.receiverId === currentUser.id && m.read !== true)
+          .map(m => m.senderId);
+        setUnreadMessageIds(Array.from(new Set(unreadFromAthletes)));
+      } else if (currentUser.role === 'COACH') {
         const [entriesData, coachedData, msgs] = await Promise.all([
           storageService.getAllEntries(),
           storageService.getCoachedAthletes(currentUser.id),
@@ -122,7 +135,11 @@ const App: React.FC = () => {
       
       if (profile) {
         setUser(profile);
-        setActiveView(profile.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+        if (profile.role === 'ADMIN') {
+          setActiveView('ADMIN_DASHBOARD');
+        } else {
+          setActiveView(profile.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+        }
         refreshData(profile);
         
         const pending = localStorage.getItem('pending_join_code');
@@ -291,6 +308,9 @@ const App: React.FC = () => {
     >
       {auditProcessingStep && (
         <AuditProcessingOverlay step={auditProcessingStep} />
+      )}
+      {activeView === 'ADMIN_DASHBOARD' && user?.role === 'ADMIN' && (
+        <AdminDashboard onBack={() => setActiveView('COACH_DASHBOARD')} />
       )}
       {activeView === 'ONBOARDING' && user && (
         <Onboarding user={user} onComplete={(updatedUser) => {
