@@ -1,6 +1,7 @@
 
-export type UserRole = 'ATHLETE' | 'COACH' | 'PENDING';
+export type UserRole = 'ATHLETE' | 'COACH' | 'PENDING' | 'ADMIN';
 export type SessionType = 'TRAINING' | 'COMPETITION' | 'TRAVEL' | 'REST';
+export type PlannedMissionType = 'RECOVERY' | 'AEROBIC_BASE' | 'THRESHOLD_TEMPO' | 'INTERVALS_VO2MAX' | 'STRENGTH_POWER' | 'LONG_ENDURANCE';
 export type Regime = 'BUILD' | 'ADAPT' | 'RESTORATION' | 'CAUTION' | 'CALIBRATING';
 export type PersonalityCalibration = 'STOIC' | 'BALANCED' | 'EXPRESSIVE';
 export type TrainingFocus = 'SPEED' | 'POWER' | 'STRENGTH' | 'AEROBIC_EFFICIENCY' | 'FREQUENCY' | 'VOLUME_TOLERANCE';
@@ -25,6 +26,10 @@ export interface User {
   birthDate?: string;
   trainingFocus?: TrainingFocus;
   personalityCalibration?: PersonalityCalibration;
+  isPremium?: boolean;
+  isFrozen?: boolean;
+  queuedAlert?: string | null;
+  lastActiveAt?: string;
 }
 
 // Added WellnessEntry interface to track daily athlete status and internal load metrics
@@ -33,7 +38,9 @@ export interface WellnessEntry {
   userId: string;
   timestamp: string;
   isoDate: string;
-  sessionType: string;
+  sessionType: SessionType;
+  plannedMissionType?: PlannedMissionType;
+  wearableScore?: number;
   lastSessionRPE: number;
   energy: number;
   soreness: number;
@@ -46,6 +53,7 @@ export interface WellnessEntry {
   menstrualCycle: boolean;
   comments: string;
   readByCoach?: boolean;
+  divergenceIntensity?: number;
 }
 
 export type InteractionType = 'EXPLAIN_LOGIC' | 'ADD_CONTEXT' | 'DATA_QUERY';
@@ -55,7 +63,7 @@ export interface InteractionResponse {
   text: string;
 }
 
-export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS';
+export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD';
 
 export interface SubmaxTest {
   id: string;
