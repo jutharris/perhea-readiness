@@ -13,12 +13,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT NOT NULL,
   first_name TEXT DEFAULT '',
   last_name TEXT DEFAULT '',
-  role TEXT CHECK (role IN ('ATHLETE', 'COACH', 'PENDING')) NOT NULL DEFAULT 'PENDING',
+  role TEXT CHECK (role IN ('ATHLETE', 'COACH', 'PENDING', 'ADMIN')) NOT NULL DEFAULT 'PENDING',
   coach_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   invite_code TEXT UNIQUE,
   birth_date DATE,
   training_focus TEXT,
   personality_calibration TEXT DEFAULT 'BALANCED',
+  is_premium BOOLEAN DEFAULT false,
+  is_frozen BOOLEAN DEFAULT false,
+  queued_alert TEXT,
+  last_active_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -41,6 +45,9 @@ CREATE TABLE IF NOT EXISTS public.wellness_entries (
   menstrual_cycle BOOLEAN DEFAULT false,
   comments TEXT,
   read_by_coach BOOLEAN DEFAULT false,
+  planned_mission_type TEXT,
+  wearable_score INTEGER,
+  divergence_intensity NUMERIC,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
