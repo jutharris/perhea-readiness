@@ -284,7 +284,8 @@ export const storageService = {
 
   getGlobalMetrics: async () => {
     checkConfig();
-    const users = await storageService.getAllUsers();
+    const allUsers = await storageService.getAllUsers();
+    const athletes = allUsers.filter(u => u.role === 'ATHLETE');
     const entries = await storageService.getAllEntries();
 
     const now = new Date();
@@ -292,13 +293,14 @@ export const storageService = {
     sevenDaysAgo.setDate(now.getDate() - 7);
 
     // 1. Day-7 Return Rate
-    const activeInLast7 = users.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= sevenDaysAgo);
-    const day7ReturnRate = users.length > 0 ? (activeInLast7.length / users.length) * 100 : 0;
+    const activeInLast7 = athletes.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= sevenDaysAgo);
+    const day7ReturnRate = athletes.length > 0 ? (activeInLast7.length / athletes.length) * 100 : 0;
 
     // 2. Friction Index (Form completion vs App open)
-    // For now, we'll estimate this as (entries in last 7 days / active users in last 7 days)
-    // Ideally we'd track 'app_opens' separately.
-    const entriesInLast7 = entries.filter(e => new Date(e.isoDate) >= sevenDaysAgo);
+    const entriesInLast7 = entries.filter(e => {
+      const isAthleteEntry = athletes.some(a => a.id === e.userId);
+      return isAthleteEntry && new Date(e.isoDate) >= sevenDaysAgo;
+    });
     const frictionIndex = activeInLast7.length > 0 ? (entriesInLast7.length / (activeInLast7.length * 7)) * 100 : 0;
 
     // 3. AI Insight ROI
