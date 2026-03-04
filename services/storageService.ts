@@ -11,29 +11,54 @@ export const storageService = {
   getProfile: async (userId: string): Promise<User | null> => {
     checkConfig();
     try {
-      const { data, error } = await supabase!
+      const { data: initialData, error } = await supabase!
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error || !data) return null;
+      let profileData = initialData;
+
+      // Account Healing: If no profile by ID, check by email (in case of re-signup)
+      if (error || !initialData) {
+        const { data: { user: authUser } } = await supabase!.auth.getUser();
+        if (authUser?.email) {
+          const { data: emailProfile } = await supabase!
+            .from('profiles')
+            .select('*')
+            .eq('email', authUser.email)
+            .single();
+          
+          if (emailProfile) {
+            // Update the old profile with the new ID
+            await supabase!.from('profiles').update({ id: userId }).eq('email', authUser.email);
+            profileData = { ...emailProfile, id: userId };
+          } else {
+            return null;
+          }
+        } else {
+          return null;
+        }
+      }
+
+      if (!profileData) return null;
 
       return {
-        id: data.id,
-        email: data.email,
-        firstName: data.first_name || '',
-        lastName: data.last_name || '',
-        role: data.role as UserRole,
-        coachId: data.coach_id,
-        inviteCode: data.invite_code,
-        birthDate: data.birth_date,
-        trainingFocus: (data.training_focus || data.focus) as TrainingFocus,
-        personalityCalibration: (data.personality_calibration || data.personality || data.reporting_style) as PersonalityCalibration,
-        isPremium: !!data.is_premium,
-        isFrozen: !!data.is_frozen,
-        queuedAlert: data.queued_alert,
-        lastActiveAt: data.last_active_at
+        id: profileData.id,
+        email: profileData.email,
+        firstName: profileData.first_name || '',
+        lastName: profileData.last_name || '',
+        role: profileData.role as UserRole,
+        coachId: profileData.coach_id,
+        inviteCode: profileData.invite_code,
+        birthDate: profileData.birth_date,
+        trainingFocus: (profileData.training_focus || profileData.focus) as TrainingFocus,
+        personalityCalibration: (profileData.personality_calibration || profileData.personality || profileData.reporting_style) as PersonalityCalibration,
+        isPremium: !!profileData.is_premium,
+        isFrozen: !!profileData.is_frozen,
+        queuedAlert: profileData.queued_alert,
+        lastActiveAt: profileData.last_active_at,
+        hasWearable: !!profileData.has_wearable
       };
     } catch (err) {
       return null;
@@ -41,7 +66,7 @@ export const storageService = {
   },
 
   // First-time record creation in public.profiles
-  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string): Promise<User> => {
+  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string, hasWearable: boolean = true): Promise<User> => {
     checkConfig();
     
     const insertData: any = {
@@ -50,7 +75,8 @@ export const storageService = {
       first_name: firstName,
       last_name: lastName,
       role: role,
-      birth_date: birthDate || null
+      birth_date: birthDate || null,
+      has_wearable: hasWearable
     };
 
     if (role === 'COACH') {
@@ -79,7 +105,8 @@ export const storageService = {
       isPremium: !!data.is_premium,
       isFrozen: !!data.is_frozen,
       queuedAlert: data.queued_alert,
-      lastActiveAt: data.last_active_at
+      lastActiveAt: data.last_active_at,
+      hasWearable: !!data.has_wearable
     };
   },
 
@@ -277,6 +304,7 @@ export const storageService = {
     if (updates.isFrozen !== undefined) dbUpdates.is_frozen = updates.isFrozen;
     if (updates.queuedAlert !== undefined) dbUpdates.queued_alert = updates.queuedAlert;
     if (updates.role !== undefined) dbUpdates.role = updates.role;
+    if (updates.hasWearable !== undefined) dbUpdates.has_wearable = updates.hasWearable;
 
     const { error } = await supabase!.from('profiles').update(dbUpdates).eq('id', userId);
     if (error) throw error;
