@@ -41,10 +41,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
   const toggleStatus = async (userId: string, field: 'isPremium' | 'isFrozen', currentVal: boolean) => {
     try {
+      setLoading(true);
       await storageService.updateUserStatus(userId, { [field]: !currentVal });
-      fetchData();
+      await fetchData();
     } catch (err) {
-      alert("Error updating status");
+      alert("Error updating status. Check RLS policies.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,10 +55,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
     const msg = prompt("Enter CNS Warning message (or leave blank for default):");
     if (msg === null) return;
     try {
+      setLoading(true);
       await storageService.updateUserStatus(userId, { queuedAlert: msg || "CNS Divergence Detected" });
+      await fetchData();
       alert("Alert queued for next audit.");
     } catch (err) {
-      alert("Error queueing alert");
+      alert("Error queueing alert. Check RLS policies.");
+    } finally {
+      setLoading(false);
     }
   };
 
