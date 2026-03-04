@@ -106,15 +106,32 @@ EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 -- Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (
+  auth.uid() = id OR 
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+CREATE POLICY "Athletes can manage own entries" ON public.wellness_entries FOR ALL USING (
+  auth.uid() = user_id OR
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
 CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries FOR SELECT USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN' OR
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
 );
-CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (auth.uid() = coach_id);
-CREATE POLICY "Athletes manage own tests" ON public.submax_tests FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (
+  auth.uid() = user_id OR
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+CREATE POLICY "Coaches manage sent adjustments" ON public.coach_adjustments FOR ALL USING (
+  auth.uid() = coach_id OR
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+CREATE POLICY "Athletes manage own tests" ON public.submax_tests FOR ALL USING (
+  auth.uid() = user_id OR
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
 CREATE POLICY "Coaches view squad tests" ON public.submax_tests FOR SELECT USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN' OR
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.submax_tests.user_id AND p.coach_id = auth.uid())
 );
 
