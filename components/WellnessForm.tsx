@@ -133,25 +133,27 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
           </div>
         )}
 
-        <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-bold text-slate-900">Wearable Recovery</p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">What does your device suggest?</p>
+        {user.hasWearable && (
+          <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-bold text-slate-900">Wearable Recovery</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">What does your device suggest?</p>
+              </div>
+              <div className="text-2xl font-black text-indigo-600">{data.wearableScore}</div>
             </div>
-            <div className="text-2xl font-black text-indigo-600">{data.wearableScore}</div>
+            <input 
+              type="range" min="1" max="10" step="1"
+              value={data.wearableScore}
+              onChange={e => setData({ ...data, wearableScore: parseInt(e.target.value) })}
+              className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            />
+            <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest">
+              <span>Poor</span>
+              <span>Optimal</span>
+            </div>
           </div>
-          <input 
-            type="range" min="1" max="10" step="1"
-            value={data.wearableScore}
-            onChange={e => setData({ ...data, wearableScore: parseInt(e.target.value) })}
-            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-          />
-          <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest">
-            <span>Poor</span>
-            <span>Optimal</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* 1. Yesterday's Perceived Effort (Mandatory) */}
