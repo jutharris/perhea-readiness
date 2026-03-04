@@ -29,7 +29,11 @@ export const storageService = {
         inviteCode: data.invite_code,
         birthDate: data.birth_date,
         trainingFocus: (data.training_focus || data.focus) as TrainingFocus,
-        personalityCalibration: (data.personality_calibration || data.personality || data.reporting_style) as PersonalityCalibration
+        personalityCalibration: (data.personality_calibration || data.personality || data.reporting_style) as PersonalityCalibration,
+        isPremium: !!data.is_premium,
+        isFrozen: !!data.is_frozen,
+        queuedAlert: data.queued_alert,
+        lastActiveAt: data.last_active_at
       };
     } catch (err) {
       return null;
@@ -71,7 +75,11 @@ export const storageService = {
       coachId: data.coach_id,
       birthDate: data.birth_date,
       trainingFocus: data.training_focus,
-      personalityCalibration: data.personality_calibration as PersonalityCalibration
+      personalityCalibration: data.personality_calibration as PersonalityCalibration,
+      isPremium: !!data.is_premium,
+      isFrozen: !!data.is_frozen,
+      queuedAlert: data.queued_alert,
+      lastActiveAt: data.last_active_at
     };
   },
 
@@ -168,6 +176,9 @@ export const storageService = {
     const { error } = await supabase!.from('wellness_entries').insert([{
       user_id: entryData.userId,
       session_type: entryData.sessionType,
+      planned_mission_type: entryData.plannedMissionType,
+      wearable_score: entryData.wearableScore,
+      divergence_intensity: entryData.divergenceIntensity,
       last_session_rpe: entryData.lastSessionRPE,
       energy: entryData.energy,
       soreness: entryData.soreness,
@@ -181,6 +192,9 @@ export const storageService = {
       comments: entryData.comments
     }]);
     if (error) throw error;
+
+    // Update last_active_at for the user
+    await supabase!.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', entryData.userId);
   },
 
   getEntriesForUser: async (userId: string): Promise<WellnessEntry[]> => {
@@ -188,7 +202,11 @@ export const storageService = {
     const { data } = await supabase!.from('wellness_entries').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     return (data || []).map(d => ({
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
-      sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
+      sessionType: d.session_type, 
+      plannedMissionType: d.planned_mission_type,
+      wearableScore: d.wearable_score,
+      divergenceIntensity: d.divergence_intensity,
+      lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
       feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
       readByCoach: !!d.read_by_coach
@@ -200,7 +218,11 @@ export const storageService = {
     const { data } = await supabase!.from('wellness_entries').select('*').order('created_at', { ascending: false });
     return (data || []).map(d => ({
       id: d.id, userId: d.user_id, timestamp: new Date(d.created_at).toLocaleString(), isoDate: d.created_at,
-      sessionType: d.session_type, lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
+      sessionType: d.session_type, 
+      plannedMissionType: d.planned_mission_type,
+      wearableScore: d.wearable_score,
+      divergenceIntensity: d.divergence_intensity,
+      lastSessionRPE: d.last_session_rpe, energy: d.energy, soreness: d.soreness,
       sleepHours: Number(d.sleep_hours), sleepQuality: d.sleep_quality, stress: d.stress, social: d.social,
       feelingSick: d.feeling_sick, injured: d.injured, menstrualCycle: d.menstrual_cycle, comments: d.comments,
       readByCoach: !!d.read_by_coach
@@ -219,8 +241,80 @@ export const storageService = {
       coachId: d.coach_id, 
       birthDate: d.birth_date, 
       trainingFocus: (d.training_focus || d.focus) as TrainingFocus,
-      personalityCalibration: (d.personality_calibration || d.personality || d.reporting_style) as PersonalityCalibration
+      personalityCalibration: (d.personality_calibration || d.personality || d.reporting_style) as PersonalityCalibration,
+      isPremium: !!d.is_premium,
+      isFrozen: !!d.is_frozen,
+      queuedAlert: d.queued_alert,
+      lastActiveAt: d.last_active_at
     }));
+  },
+
+  // Admin Methods
+  getAllUsers: async (): Promise<User[]> => {
+    checkConfig();
+    const { data } = await supabase!.from('profiles').select('*').order('created_at', { ascending: false });
+    return (data || []).map(d => ({
+      id: d.id,
+      email: d.email,
+      firstName: d.first_name,
+      lastName: d.last_name,
+      role: d.role as UserRole,
+      coachId: d.coach_id,
+      birthDate: d.birth_date,
+      trainingFocus: (d.training_focus || d.focus) as TrainingFocus,
+      personalityCalibration: (d.personality_calibration || d.personality || d.reporting_style) as PersonalityCalibration,
+      isPremium: !!d.is_premium,
+      isFrozen: !!d.is_frozen,
+      queuedAlert: d.queued_alert,
+      lastActiveAt: d.last_active_at
+    }));
+  },
+
+  updateUserStatus: async (userId: string, updates: Partial<User>) => {
+    checkConfig();
+    const dbUpdates: any = {};
+    if (updates.isPremium !== undefined) dbUpdates.is_premium = updates.isPremium;
+    if (updates.isFrozen !== undefined) dbUpdates.is_frozen = updates.isFrozen;
+    if (updates.queuedAlert !== undefined) dbUpdates.queued_alert = updates.queuedAlert;
+    if (updates.role !== undefined) dbUpdates.role = updates.role;
+
+    const { error } = await supabase!.from('profiles').update(dbUpdates).eq('id', userId);
+    if (error) throw error;
+  },
+
+  getGlobalMetrics: async () => {
+    checkConfig();
+    const users = await storageService.getAllUsers();
+    const entries = await storageService.getAllEntries();
+
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    // 1. Day-7 Return Rate
+    const activeInLast7 = users.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= sevenDaysAgo);
+    const day7ReturnRate = users.length > 0 ? (activeInLast7.length / users.length) * 100 : 0;
+
+    // 2. Friction Index (Form completion vs App open)
+    // For now, we'll estimate this as (entries in last 7 days / active users in last 7 days)
+    // Ideally we'd track 'app_opens' separately.
+    const entriesInLast7 = entries.filter(e => new Date(e.isoDate) >= sevenDaysAgo);
+    const frictionIndex = activeInLast7.length > 0 ? (entriesInLast7.length / (activeInLast7.length * 7)) * 100 : 0;
+
+    // 3. AI Insight ROI
+    // Placeholder logic: % of entries that have comments or interactions
+    const aiInsightROI = 45; // Placeholder
+
+    // 4. Submission Consistency
+    // Calculate avg time of day for submissions and its std dev
+    const submissionConsistency = 85; // Placeholder
+
+    return {
+      day7ReturnRate,
+      frictionIndex,
+      aiInsightROI,
+      submissionConsistency
+    };
   },
 
   saveAdjustment: async (userId: string, coachId: string, message: string) => {
