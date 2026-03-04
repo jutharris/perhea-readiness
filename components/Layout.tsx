@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, User } from '../types';
 
@@ -34,8 +35,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
         {children}
       </main>
       {user && !isPending && !hideNav && (
-        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-lg px-8 py-4 flex space-x-12 rounded-[2rem] shadow-2xl border border-white/10">
-          {isCoach ? (
+        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-lg px-8 py-4 flex items-center space-x-12 rounded-[2rem] shadow-2xl border border-white/10 z-50">
+          {user.role === 'ADMIN' ? (
+            <>
+              <button onClick={() => setView('ADMIN_DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'ADMIN_DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>SYSTEM</button>
+              <button onClick={() => setView('COACH_DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'COACH_DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>SQUAD</button>
+            </>
+          ) : isCoach ? (
             <>
               <button onClick={() => setView('COACH_DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'COACH_DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>SQUAD</button>
             </>
