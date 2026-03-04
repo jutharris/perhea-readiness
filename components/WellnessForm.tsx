@@ -2,10 +2,22 @@
 import React, { useState } from 'react';
 import SliderQuestion from './SliderQuestion';
 import { storageService } from '../services/storageService';
+import { SessionType, PlannedMissionType } from '../types';
+
+const MISSION_BENCHMARKS: Record<PlannedMissionType, number> = {
+  RECOVERY: 1.5,
+  AEROBIC_BASE: 3.5,
+  THRESHOLD_TEMPO: 6,
+  INTERVALS_VO2MAX: 9,
+  STRENGTH_POWER: 5.5,
+  LONG_ENDURANCE: 5
+};
 
 const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
   const [data, setData] = useState({ 
-    sessionType: 'TRAINING', 
+    sessionType: 'TRAINING' as SessionType, 
+    plannedMissionType: 'AEROBIC_BASE' as PlannedMissionType,
+    wearableScore: 5,
     lastSessionRPE: 0, 
     energy: 4, 
     soreness: 4, 
@@ -28,7 +40,18 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
     }
     setLoading(true);
     try {
-      await storageService.saveEntry({ ...data, userId: user.id, sleepHours: Number(data.sleepHours) });
+      let divergenceIntensity = 0;
+      if (data.sessionType === 'TRAINING' || data.sessionType === 'COMPETITION') {
+        const benchmark = MISSION_BENCHMARKS[data.plannedMissionType];
+        divergenceIntensity = data.lastSessionRPE - benchmark;
+      }
+
+      await storageService.saveEntry({ 
+        ...data, 
+        userId: user.id, 
+        sleepHours: Number(data.sleepHours),
+        divergenceIntensity
+      });
       onComplete();
     } catch (err) {
       alert("Error saving report.");
@@ -62,8 +85,73 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
   return (
     <form onSubmit={submit} className="max-w-md mx-auto space-y-6 pb-20">
       <div className="text-center space-y-2 mb-10">
-        <h2 className="text-3xl font-black text-slate-900 italic uppercase">Daily Audit</h2>
+        <h2 className="text-3xl font-black text-slate-900 italic uppercase">Daily Wellness Audit</h2>
         <p className="text-sm font-bold text-slate-400">Biological Readiness Protocol</p>
+      </div>
+
+      {/* 0. Day Plan & Wearable Score */}
+      <div className="space-y-4">
+        <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+          <p className="font-bold text-slate-900 text-sm uppercase tracking-tight">Today's Plan</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(['TRAINING', 'COMPETITION', 'TRAVEL', 'REST'] as SessionType[]).map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setData({ ...data, sessionType: type })}
+                className={`py-3 px-4 rounded-xl text-[10px] font-black transition-all ${
+                  data.sessionType === type 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                    : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {(data.sessionType === 'TRAINING' || data.sessionType === 'COMPETITION') && (
+          <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <p className="font-bold text-slate-900 text-sm uppercase tracking-tight">Mission Type</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(MISSION_BENCHMARKS) as PlannedMissionType[]).map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setData({ ...data, plannedMissionType: type })}
+                  className={`py-3 px-4 rounded-xl text-[10px] font-black transition-all ${
+                    data.plannedMissionType === type 
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                      : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                  }`}
+                >
+                  {type.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-bold text-slate-900">Wearable Recovery</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">What does your device suggest?</p>
+            </div>
+            <div className="text-2xl font-black text-indigo-600">{data.wearableScore}</div>
+          </div>
+          <input 
+            type="range" min="1" max="10" step="1"
+            value={data.wearableScore}
+            onChange={e => setData({ ...data, wearableScore: parseInt(e.target.value) })}
+            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+          />
+          <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest">
+            <span>Poor</span>
+            <span>Optimal</span>
+          </div>
+        </div>
       </div>
 
       {/* 1. Yesterday's Perceived Effort (Mandatory) */}
