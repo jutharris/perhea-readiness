@@ -30,6 +30,7 @@ export interface User {
   isFrozen?: boolean;
   queuedAlert?: string | null;
   lastActiveAt?: string;
+  hasWearable?: boolean;
 }
 
 // Added WellnessEntry interface to track daily athlete status and internal load metrics
