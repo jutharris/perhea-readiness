@@ -115,6 +115,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             sub="Retention North Star"
             icon={<Users className="w-5 h-5 text-indigo-400" />}
             color="bg-indigo-500/10"
+            tooltip="The % of your athletes who have logged in at least once in the last week. This is your 'Stickiness' score—if this is low, athletes are forgetting the app exists."
           />
           <MetricCard 
             label="Friction Index" 
@@ -122,6 +123,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             sub="Completion vs Open"
             icon={<Zap className="w-5 h-5 text-amber-400" />}
             color="bg-amber-500/10"
+            tooltip="The ratio of completed forms vs. app opens. If this is low, it means athletes are opening the app but closing it because the form feels like too much work."
           />
           <MetricCard 
             label="AI Insight ROI" 
@@ -129,6 +131,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             sub="Retention Driver"
             icon={<Activity className="w-5 h-5 text-emerald-400" />}
             color="bg-emerald-500/10"
+            tooltip="The % of logs where athletes actually engaged with the AI feedback. High ROI means the AI is actually changing their behavior, not just being ignored."
           />
           <MetricCard 
             label="Submission Consistency" 
@@ -136,6 +139,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             sub="Habit Formation"
             icon={<Clock className="w-5 h-5 text-blue-400" />}
             color="bg-blue-500/10"
+            tooltip="Measures how 'robotic' the habit is. High consistency means they log at the exact same time every day (e.g., 7:00 AM), which is the strongest sign of a long-term habit."
           />
         </div>
 
@@ -175,8 +179,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 <tr className="bg-slate-950/50">
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">User / Identity</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Habit Score</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Divergence</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
+                    <div className="group relative inline-block cursor-help">
+                      Habit Score
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                        A composite score (1-10) based on log frequency, timing consistency, and long-term retention.
+                      </div>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
+                    <div className="group relative inline-block cursor-help">
+                      Divergence
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                        How far today's physical data (HRV/Sleep) has drifted from their normal baseline. A high positive number means they are significantly more stressed than usual.
+                      </div>
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Last Active</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
                 </tr>
@@ -199,8 +217,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   );
 };
 
-const MetricCard = ({ label, value, sub, icon, color }: any) => (
-  <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 shadow-lg space-y-4">
+const MetricCard = ({ label, value, sub, icon, color, tooltip }: any) => (
+  <div className="group relative bg-slate-900 p-6 rounded-[2rem] border border-slate-800 shadow-lg space-y-4 transition-all hover:border-indigo-500/30">
+    {tooltip && (
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 p-3 bg-slate-800 text-white text-[10px] font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl border border-slate-700 leading-relaxed">
+        {tooltip}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+      </div>
+    )}
     <div className="flex justify-between items-start">
       <div className={`${color} p-3 rounded-2xl`}>{icon}</div>
       <div className="text-2xl font-black text-white">{value}</div>
