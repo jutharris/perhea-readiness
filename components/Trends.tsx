@@ -3,8 +3,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { WellnessEntry, User } from '../types';
 import { storageService } from '../services/storageService';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell,
+  ComposedChart, Line, ReferenceArea
 } from 'recharts';
 
 interface TrendsProps {
@@ -38,7 +39,7 @@ const Sparkline: React.FC<{
     return data.slice(inflectionIndex);
   }, [data, inflectionIndex]);
 
-  const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7];
+  const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7] as [number, number];
 
   return (
     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-40">
@@ -48,7 +49,7 @@ const Sparkline: React.FC<{
       </div>
       <div className="flex-1 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <ComposedChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
               <linearGradient id={`gradient-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
@@ -57,18 +58,27 @@ const Sparkline: React.FC<{
             </defs>
             <YAxis domain={yDomain} hide />
             <XAxis dataKey="date" hide />
-            {/* SD Band */}
-            {stats && stats.stdDev !== undefined && (
-              <Area 
-                type="monotone" 
-                dataKey={() => stats.mean + stats.stdDev} 
-                stroke="none" 
-                fill="#f1f5f9" 
-                fillOpacity={0.5}
-                baseLine={stats.mean - stats.stdDev}
-                animationDuration={0}
+            
+            {/* SD Band using ReferenceArea for stability */}
+            {stats && stats.mean !== undefined && stats.stdDev !== undefined && (
+              <ReferenceArea 
+                y1={Math.max(0, stats.mean - stats.stdDev)} 
+                y2={Math.min(yDomain[1], stats.mean + stats.stdDev)} 
+                fill="#f8fafc" 
+                fillOpacity={0.8} 
+                stroke="none"
               />
             )}
+
+            {/* Main Area - Fills the bottom */}
+            <Area
+              type="monotone"
+              dataKey={metricKey}
+              stroke="none"
+              fill={`url(#gradient-${metricKey})`}
+              animationDuration={1000}
+            />
+
             {/* Normal Line */}
             <Line 
               type="monotone" 
@@ -79,6 +89,7 @@ const Sparkline: React.FC<{
               dot={data.length === 1}
               animationDuration={1000}
             />
+            
             {/* Highlighted Line */}
             {isHighlighted && (
               <Line 
@@ -91,6 +102,7 @@ const Sparkline: React.FC<{
                 animationDuration={1000}
               />
             )}
+
             {/* Anchor Dot */}
             <Line
               type="monotone"
@@ -104,7 +116,7 @@ const Sparkline: React.FC<{
                 return null;
               }}
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -188,7 +200,7 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
         </div>
         <div className="h-32 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={srpeData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+            <BarChart data={srpeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="date" hide />
               <YAxis domain={[0, 10]} hide />
