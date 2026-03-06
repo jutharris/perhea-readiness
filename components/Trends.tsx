@@ -161,8 +161,8 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
   const wellnessMetrics = [
     { key: 'sleepQuality', label: 'Sleep Quality' },
     { key: 'energy', label: 'Energy' },
-    { key: 'stress', label: 'Stress' },
-    { key: 'soreness', label: 'Soreness' },
+    { key: 'stress', label: 'Stress Mgmt' },
+    { key: 'soreness', label: 'Freshness' },
     { key: 'social', label: 'Mood' },
     { key: 'sleepHours', label: 'Sleep Hours' }
   ];
