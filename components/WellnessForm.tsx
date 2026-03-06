@@ -17,7 +17,7 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
   const [data, setData] = useState({ 
     sessionType: 'TRAINING' as SessionType, 
     plannedMissionType: 'AEROBIC_BASE' as PlannedMissionType,
-    wearableScore: 5,
+    wearableScore: 5 as number | null,
     lastSessionRPE: 0, 
     energy: 4, 
     soreness: 4, 
@@ -140,17 +140,30 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
                 <p className="font-bold text-slate-900">Wearable Recovery</p>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">What does your device suggest?</p>
               </div>
-              <div className="text-2xl font-black text-indigo-600">{data.wearableScore}</div>
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setData({ ...data, wearableScore: data.wearableScore === null ? 5 : null })}
+                  className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${data.wearableScore === null ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}
+                >
+                  {data.wearableScore === null ? 'Data Off' : 'No Data'}
+                </button>
+                <div className={`text-2xl font-black ${data.wearableScore === null ? 'text-slate-200' : 'text-indigo-600'}`}>
+                  {data.wearableScore === null ? '--' : data.wearableScore}
+                </div>
+              </div>
             </div>
-            <input 
-              type="range" min="1" max="10" step="1"
-              value={data.wearableScore}
-              onChange={e => setData({ ...data, wearableScore: parseInt(e.target.value) })}
-              className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            />
-            <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest">
-              <span>Poor</span>
-              <span>Optimal</span>
+            <div className={data.wearableScore === null ? 'opacity-20 pointer-events-none' : ''}>
+              <input 
+                type="range" min="1" max="10" step="1"
+                value={data.wearableScore || 5}
+                onChange={e => setData({ ...data, wearableScore: parseInt(e.target.value) })}
+                className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+              <div className="flex justify-between text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                <span>Poor</span>
+                <span>Optimal</span>
+              </div>
             </div>
           </div>
         )}
