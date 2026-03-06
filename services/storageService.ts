@@ -611,8 +611,9 @@ export const storageService = {
       if (avg1 === null || avg2 === null) return null;
       
       const diff = avg2 - avg1;
-      // For RPE and Stress, positive diff is bad. For others, negative diff is bad.
-      const isNegativeTrend = (m === 'lastSessionRPE' || m === 'stress') ? diff > 0.5 : diff < -0.5;
+      // For RPE, positive diff is bad (increasing load). 
+      // For ALL other metrics (Readiness Scores), negative diff is bad (decreasing readiness).
+      const isNegativeTrend = (m === 'lastSessionRPE') ? diff > 0.5 : diff < -0.5;
       
       return {
         metric: m,
@@ -636,8 +637,8 @@ export const storageService = {
     const metrics: { key: keyof WellnessEntry; label: string }[] = [
       { key: 'sleepQuality', label: 'Sleep' },
       { key: 'energy', label: 'Energy' },
-      { key: 'stress', label: 'Stress' },
-      { key: 'soreness', label: 'Soreness' },
+      { key: 'stress', label: 'Stress Mgmt' },
+      { key: 'soreness', label: 'Freshness' },
       { key: 'social', label: 'Mood' },
       { key: 'sleepHours', label: 'Sleep Hours' },
       { key: 'lastSessionRPE', label: 'sRPE' }
