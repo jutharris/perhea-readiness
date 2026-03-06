@@ -41,7 +41,7 @@ export interface WellnessEntry {
   isoDate: string;
   sessionType: SessionType;
   plannedMissionType?: PlannedMissionType;
-  wearableScore?: number;
+  wearableScore?: number | null;
   lastSessionRPE: number;
   energy: number;
   soreness: number;
