@@ -117,7 +117,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
             {interactionLoading && (
               <div className="flex items-center gap-2 py-2">
                 <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Processing...</span>
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Analyzing Deep Trends...</span>
               </div>
             )}
 
