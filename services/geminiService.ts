@@ -1,13 +1,14 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { WellnessEntry, User, UserRole } from "../types";
 
 /**
  * Returns a GoogleGenAI instance initialized with the API key from environment.
  */
 const getAIInstance = () => {
-  if (!process.env.API_KEY || process.env.API_KEY === 'undefined') return null;
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined') return null;
+  return new GoogleGenAI({ apiKey });
 };
 
 /**
@@ -37,7 +38,18 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
     lookback = 28;
   }
   
-  const contextData = entries.slice(0, lookback);
+  const contextData = entries.slice(0, lookback).map(e => ({
+    date: e.isoDate.split('T')[0],
+    rpe: e.lastSessionRPE,
+    energy: e.energy,
+    soreness: e.soreness,
+    sleep: e.sleepQuality,
+    sleepHrs: e.sleepHours,
+    stress: e.stress,
+    sick: e.feelingSick,
+    injured: e.injured,
+    comments: e.comments
+  }));
   
   const prompt = `
     Act as a Performance Scientist specializing in Multivariate Turbulence Models.
@@ -71,12 +83,25 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
     const response = await ai.models.generateContent({ 
       model: "gemini-3-flash-preview", 
       contents: prompt,
-      config: systemInstruction ? { systemInstruction } : undefined
+      config: { 
+        systemInstruction,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
     return response.text || "Metrics are within your adaptive range.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    return "Maintaining stable protocol based on current metrics.";
+    // If it's a 404 or model not found, try a fallback model
+    try {
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-1.5-flash-latest",
+        contents: prompt,
+        config: { systemInstruction }
+      });
+      return fallbackResponse.text || "Maintaining stable protocol based on current metrics.";
+    } catch (innerError) {
+      return "Maintaining stable protocol based on current metrics.";
+    }
   }
 };
 
@@ -94,7 +119,18 @@ export const getAthleteInteraction = async (
 
   const entryCount = entries.length;
   const lookback = entryCount > 50 ? 50 : entryCount;
-  const contextData = entries.slice(0, lookback);
+  const contextData = entries.slice(0, lookback).map(e => ({
+    date: e.isoDate.split('T')[0],
+    rpe: e.lastSessionRPE,
+    energy: e.energy,
+    soreness: e.soreness,
+    sleep: e.sleepQuality,
+    sleepHrs: e.sleepHours,
+    stress: e.stress,
+    sick: e.feelingSick,
+    injured: e.injured,
+    comments: e.comments
+  }));
 
   let specificInstruction = "";
   if (type === 'EXPLAIN_LOGIC') {
@@ -128,12 +164,25 @@ export const getAthleteInteraction = async (
     const response = await ai.models.generateContent({ 
       model: "gemini-3-flash-preview", 
       contents: prompt,
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
     return response.text || JSON.stringify({ text: "I'm processing your data. Please try again." });
   } catch (error) {
     console.error("Gemini Interaction Error:", error);
-    return JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
+    // Fallback to 1.5 flash if 3.0 fails
+    try {
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-1.5-flash-latest",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      return fallbackResponse.text || JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
+    } catch (innerError) {
+      return JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
+    }
   }
 };
 
