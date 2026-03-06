@@ -116,7 +116,7 @@ const App: React.FC = () => {
       
       // Add background polling for coaches to keep dashboard dots fresh
       if (user.role === 'COACH') {
-        const interval = setInterval(() => refreshData(user), 15000);
+        const interval = setInterval(() => refreshData(user), 60000);
         return () => clearInterval(interval);
       }
     }
