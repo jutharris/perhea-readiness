@@ -38,6 +38,8 @@ const Sparkline: React.FC<{
     return data.slice(inflectionIndex);
   }, [data, inflectionIndex]);
 
+  const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7];
+
   return (
     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-40">
       <div className="flex justify-between items-start mb-2">
@@ -53,16 +55,20 @@ const Sparkline: React.FC<{
                 <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
               </linearGradient>
             </defs>
+            <YAxis domain={yDomain} hide />
+            <XAxis dataKey="date" hide />
             {/* SD Band */}
-            <Area 
-              type="monotone" 
-              dataKey={() => stats.mean + stats.stdDev} 
-              stroke="none" 
-              fill="#f1f5f9" 
-              fillOpacity={0.5}
-              baseLine={stats.mean - stats.stdDev}
-              animationDuration={0}
-            />
+            {stats && stats.stdDev !== undefined && (
+              <Area 
+                type="monotone" 
+                dataKey={() => stats.mean + stats.stdDev} 
+                stroke="none" 
+                fill="#f1f5f9" 
+                fillOpacity={0.5}
+                baseLine={stats.mean - stats.stdDev}
+                animationDuration={0}
+              />
+            )}
             {/* Normal Line */}
             <Line 
               type="monotone" 
@@ -70,7 +76,7 @@ const Sparkline: React.FC<{
               dataKey={metricKey} 
               stroke={isHighlighted ? "#cbd5e1" : "#4f46e5"} 
               strokeWidth={isHighlighted ? 1 : 2} 
-              dot={false}
+              dot={data.length === 1}
               animationDuration={1000}
             />
             {/* Highlighted Line */}
