@@ -53,25 +53,9 @@ const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
 
   return (
     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <LayoutGrid className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Subjective Heatmap</h3>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-            <span className="text-[8px] font-bold text-slate-400 uppercase">Optimal</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-            <span className="text-[8px] font-bold text-slate-400 uppercase">Warning</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-            <span className="text-[8px] font-bold text-slate-400 uppercase">Critical</span>
-          </div>
-        </div>
+      <div className="flex items-center gap-3">
+        <LayoutGrid className="w-5 h-5 text-indigo-600" />
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Subjective Heatmap</h3>
       </div>
 
       <div className="overflow-x-auto no-scrollbar">
@@ -109,6 +93,21 @@ const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
               </React.Fragment>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-50">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Optimal</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-amber-400 shadow-sm"></div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Warning</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Critical</span>
         </div>
       </div>
     </div>
@@ -457,19 +456,17 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
               </div>
               
               <div className="space-y-6">
-                <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black">
-                      {entries[0]?.lastSessionRPE || 0}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Latest RPE</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">{entries[0]?.sessionType || 'REST'}</p>
-                    </div>
+                <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-100">
+                    {entries[0]?.lastSessionRPE || 0}
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged</p>
-                    <p className="text-xs font-bold text-slate-900">{entries[0] ? new Date(entries[0].isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'N/A'}</p>
+                  <div>
+                    <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Latest RPE</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">{entries[0]?.sessionType || 'REST'}</p>
+                  </div>
+                  <div className="w-full pt-4 border-t border-slate-200 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged</span>
+                    <span className="text-xs font-bold text-slate-900">{entries[0] ? new Date(entries[0].isoDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'N/A'}</span>
                   </div>
                 </div>
 
