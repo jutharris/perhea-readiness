@@ -16,9 +16,12 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
   const [showInput, setShowInput] = useState<InteractionType | 'MESSAGE_COACH' | null>(null);
   const [userInput, setUserInput] = useState('');
 
+  const latestEntryId = entries[0]?.id;
+  const entriesCount = entries.length;
+
   useEffect(() => {
-    if (entries.length > 0) {
-      const latestId = entries[0].id;
+    if (entriesCount > 0 && !interactionLoading) {
+      const latestId = latestEntryId;
       
       // Get or create a session ID that persists only for the current browser session
       let sessionId = sessionStorage.getItem('ai_session_id');
@@ -33,6 +36,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
 
       if (cached) {
         setAnalysis(cached);
+        setLoading(false);
         return;
       }
 
@@ -58,7 +62,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
         setLoading(false);
       });
     }
-  }, [entries, role, personalityCalibration]);
+  }, [latestEntryId, entriesCount, role, personalityCalibration, interactionLoading]);
 
   const handleInteraction = async (type: InteractionType | 'MESSAGE_COACH', message?: string) => {
     setInteractionLoading(true);
@@ -98,83 +102,98 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
     <div className="space-y-4">
       <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-4 relative overflow-hidden">
         <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI Assistant Coach</h3>
-        {loading ? (
-          <div className="h-12 flex items-center">
-            <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-white/90 leading-relaxed italic">"{analysis}"</p>
+        
+        <div className="space-y-4">
+          <div className="relative">
+            {loading && !analysis && (
+              <div className="h-12 flex items-center">
+                <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
             
-            {interactionResponse && (
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
-                <p className="text-xs font-medium text-indigo-200 leading-relaxed">
-                  {interactionResponse}
+            {analysis && (
+              <div className="relative">
+                {loading && (
+                  <div className="absolute -top-5 right-0 flex items-center gap-2 animate-in fade-in duration-300">
+                    <div className="w-2 h-2 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Refreshing...</span>
+                  </div>
+                )}
+                <p className={`text-sm font-medium text-white/90 leading-relaxed italic transition-opacity duration-500 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+                  "{analysis}"
                 </p>
               </div>
             )}
-
-            {interactionLoading && (
-              <div className="flex items-center gap-2 py-2">
-                <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Analyzing Deep Trends...</span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button 
-                onClick={() => handleInteraction('EXPLAIN_LOGIC')}
-                disabled={interactionLoading}
-                className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors"
-              >
-                Explain Logic
-              </button>
-              <button 
-                onClick={() => setShowInput('ADD_CONTEXT')}
-                disabled={interactionLoading}
-                className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors"
-              >
-                Add Context
-              </button>
-              <button 
-                onClick={() => setShowInput('DATA_QUERY')}
-                disabled={interactionLoading}
-                className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors"
-              >
-                Data Query
-              </button>
-            </div>
-
-            {showInput && (
-              <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                <textarea 
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  placeholder={
-                    showInput === 'MESSAGE_COACH' ? "Send a direct message to your coach..." :
-                    showInput === 'ADD_CONTEXT' ? "e.g., 'I had a late flight' or 'Work is peaking'..." : 
-                    "e.g., 'What was my avg sleep hours last month?'..."
-                  }
-                  className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition-colors resize-none"
-                />
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleInteraction(showInput, userInput)}
-                    className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest"
-                  >
-                    Send
-                  </button>
-                  <button 
-                    onClick={() => { setShowInput(null); setUserInput(''); }}
-                    className="px-4 py-2 bg-white/5 text-white/40 text-[10px] font-black rounded-lg uppercase tracking-widest"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        )}
+          
+          {interactionResponse && (
+            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 animate-in fade-in slide-in-from-top-2 duration-300">
+              <p className="text-xs font-medium text-indigo-200 leading-relaxed">
+                {interactionResponse}
+              </p>
+            </div>
+          )}
+
+          {interactionLoading && (
+            <div className="flex items-center gap-2 py-2">
+              <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Analyzing Deep Trends...</span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button 
+              onClick={() => handleInteraction('EXPLAIN_LOGIC')}
+              disabled={interactionLoading}
+              className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors disabled:opacity-30"
+            >
+              Explain Logic
+            </button>
+            <button 
+              onClick={() => setShowInput('ADD_CONTEXT')}
+              disabled={interactionLoading}
+              className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors disabled:opacity-30"
+            >
+              Add Context
+            </button>
+            <button 
+              onClick={() => setShowInput('DATA_QUERY')}
+              disabled={interactionLoading}
+              className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-indigo-400 transition-colors disabled:opacity-30"
+            >
+              Data Query
+            </button>
+          </div>
+
+          {showInput && (
+            <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <textarea 
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder={
+                  showInput === 'MESSAGE_COACH' ? "Send a direct message to your coach..." :
+                  showInput === 'ADD_CONTEXT' ? "e.g., 'I had a late flight' or 'Work is peaking'..." : 
+                  "e.g., 'What was my avg sleep hours last month?'..."
+                }
+                className="w-full h-20 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition-colors resize-none"
+              />
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleInteraction(showInput, userInput)}
+                  className="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black rounded-lg uppercase tracking-widest"
+                >
+                  Send
+                </button>
+                <button 
+                  onClick={() => { setShowInput(null); setUserInput(''); }}
+                  className="px-4 py-2 bg-white/5 text-white/40 text-[10px] font-black rounded-lg uppercase tracking-widest"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
