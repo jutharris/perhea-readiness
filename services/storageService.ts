@@ -600,7 +600,7 @@ export const storageService = {
     const secondHalf = recent.slice(0, mid);
 
     const getAvg = (arr: WellnessEntry[], key: keyof WellnessEntry) => {
-      const vals = arr.map(e => e[key]).filter(v => typeof v === 'number') as number[];
+      const vals = arr.map(e => e[key]).filter(v => typeof v === 'number' && v !== null) as number[];
       return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     };
 
@@ -655,7 +655,7 @@ export const storageService = {
     }[calibration] || { volatile: 1.2, moderate: 0.8 };
 
     return metrics.map(m => {
-      const vals = recent.map(e => e[m.key]).filter(v => typeof v === 'number') as number[];
+      const vals = recent.map(e => e[m.key]).filter(v => typeof v === 'number' && v !== null) as number[];
       if (vals.length === 0) return { ...m, avg: 0, volatility: 0, status: 'NO DATA' };
       
       const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
