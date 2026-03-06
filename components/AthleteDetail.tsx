@@ -35,20 +35,12 @@ const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
     return { date, entry };
   });
 
-  const getColor = (val: number | undefined, metric: string) => {
+  const getColor = (val: number | undefined) => {
     if (val === undefined) return 'bg-slate-100';
-    // For stress/soreness, high is bad (red), for energy/sleep/social, high is good (green)
-    const isInverse = metric === 'stress' || metric === 'soreness';
-    
-    if (isInverse) {
-      if (val >= 6) return 'bg-rose-500';
-      if (val >= 4) return 'bg-amber-400';
-      return 'bg-emerald-400';
-    } else {
-      if (val >= 6) return 'bg-emerald-500';
-      if (val >= 4) return 'bg-amber-400';
-      return 'bg-rose-400';
-    }
+    // All metrics are now Readiness Scores: High is Good (Green), Low is Bad (Red)
+    if (val >= 6) return 'bg-emerald-500';
+    if (val >= 4) return 'bg-amber-400';
+    return 'bg-rose-400';
   };
 
   return (
@@ -85,7 +77,7 @@ const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
                   return (
                     <div 
                       key={i} 
-                      className={`aspect-square rounded-lg transition-all duration-500 ${getColor(val, metric)} ${d.entry ? 'shadow-sm' : 'opacity-20'}`}
+                      className={`aspect-square rounded-lg transition-all duration-500 ${getColor(val)} ${d.entry ? 'shadow-sm' : 'opacity-20'}`}
                       title={d.entry ? `${metric}: ${val}` : 'No data'}
                     ></div>
                   );
@@ -474,8 +466,8 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                   {[
                     { label: 'Sleep', val: entries[0]?.sleepQuality, max: 7 },
                     { label: 'Energy', val: entries[0]?.energy, max: 7 },
-                    { label: 'Stress', val: entries[0]?.stress, max: 7 },
-                    { label: 'Soreness', val: entries[0]?.soreness, max: 7 }
+                    { label: 'Stress Mgmt', val: entries[0]?.stress, max: 7 },
+                    { label: 'Freshness', val: entries[0]?.soreness, max: 7 }
                   ].map(m => (
                     <div key={m.label} className="space-y-1.5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                       <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
