@@ -20,6 +20,101 @@ const TrendIndicator = ({ current, previous, inverse = false }: { current: numbe
   return isGood ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />;
 };
 
+const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
+  const metrics = ['energy', 'soreness', 'sleepQuality', 'stress', 'social'];
+  const days = 14;
+  
+  const last14Days = Array.from({ length: days }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return d.toISOString().split('T')[0];
+  }).reverse();
+
+  const data = last14Days.map(date => {
+    const entry = entries.find(e => e.isoDate.startsWith(date));
+    return { date, entry };
+  });
+
+  const getColor = (val: number | undefined, metric: string) => {
+    if (val === undefined) return 'bg-slate-100';
+    // For stress/soreness, high is bad (red), for energy/sleep/social, high is good (green)
+    const isInverse = metric === 'stress' || metric === 'soreness';
+    
+    if (isInverse) {
+      if (val >= 6) return 'bg-rose-500';
+      if (val >= 4) return 'bg-amber-400';
+      return 'bg-emerald-400';
+    } else {
+      if (val >= 6) return 'bg-emerald-500';
+      if (val >= 4) return 'bg-amber-400';
+      return 'bg-rose-400';
+    }
+  };
+
+  return (
+    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <LayoutGrid className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Subjective Heatmap</h3>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span className="text-[8px] font-bold text-slate-400 uppercase">Optimal</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+            <span className="text-[8px] font-bold text-slate-400 uppercase">Warning</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+            <span className="text-[8px] font-bold text-slate-400 uppercase">Critical</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto no-scrollbar">
+        <div className="min-w-[600px]">
+          <div className="grid grid-cols-[100px_repeat(14,1fr)] gap-2">
+            <div></div>
+            {data.map((d, i) => (
+              <div key={i} className="text-center">
+                <p className="text-[8px] font-black text-slate-400 uppercase">
+                  {new Date(d.date).toLocaleDateString([], { weekday: 'short' })[0]}
+                </p>
+                <p className="text-[7px] font-bold text-slate-300">
+                  {new Date(d.date).getDate()}
+                </p>
+              </div>
+            ))}
+
+            {metrics.map(metric => (
+              <React.Fragment key={metric}>
+                <div className="flex items-center">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">
+                    {metric.replace('Quality', '')}
+                  </span>
+                </div>
+                {data.map((d, i) => {
+                  const val = d.entry ? (d.entry as any)[metric] : undefined;
+                  return (
+                    <div 
+                      key={i} 
+                      className={`aspect-square rounded-lg transition-all duration-500 ${getColor(val, metric)} ${d.entry ? 'shadow-sm' : 'opacity-20'}`}
+                      title={d.entry ? `${metric}: ${val}` : 'No data'}
+                    ></div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachId, onRefresh, onBack }) => {
   const [athlete, setAthlete] = useState<User>(initialAthlete);
   const [msg, setMsg] = useState('');
@@ -354,8 +449,8 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
         {/* Middle Section: Current Status & Master Trend */}
         <div className="grid grid-cols-12 gap-8">
           {/* Left: Current Status */}
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm h-full space-y-6">
+          <div className="col-span-12 lg:col-span-4 space-y-8">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
                 <LayoutGrid className="w-5 h-5 text-indigo-600" />
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Current Status</h3>
@@ -398,6 +493,8 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                 </div>
               </div>
             </div>
+
+            <SubjectiveHeatmap entries={entries} />
           </div>
 
           {/* Right: Master Trend */}
