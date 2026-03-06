@@ -119,6 +119,10 @@ CREATE POLICY "Coaches can view their squad entries" ON public.wellness_entries 
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN' OR
   EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
 );
+CREATE POLICY "Coaches can update squad entries" ON public.wellness_entries FOR UPDATE USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN' OR
+  EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = public.wellness_entries.user_id AND p.coach_id = auth.uid())
+);
 CREATE POLICY "Athletes view received adjustments" ON public.coach_adjustments FOR SELECT USING (
   auth.uid() = user_id OR
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
