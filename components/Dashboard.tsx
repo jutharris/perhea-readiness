@@ -147,6 +147,10 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
               <p className="text-sm font-black text-slate-700">{entries[0].energy}/7</p>
             </div>
             <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase">Wearable</p>
+              <p className="text-sm font-black text-slate-700">{entries[0].wearableScore ?? 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
               <p className="text-[10px] font-black text-slate-400 uppercase">Status</p>
               <p className="text-sm font-black text-slate-700">{entries[0].feelingSick ? 'Sick' : (entries[0].injured ? 'Injured' : 'Healthy')}</p>
             </div>
