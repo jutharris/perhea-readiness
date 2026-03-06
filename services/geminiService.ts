@@ -57,6 +57,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
     - All wellness metrics (Energy, Freshness, Sleep, Stress Mgmt, Mood) are READINESS SCORES on a 1-7 scale.
     - HIGHER is ALWAYS BETTER (e.g., 7/7 Stress Mgmt = Perfectly Calm; 7/7 Freshness = No Soreness).
     - RPE is the only inverted metric (Higher = Higher Load).
+    - Wearable Score (1-10) may be null if data is unavailable. If null, ignore it and focus on subjective metrics.
 
     PATTERN RECOGNITION PARAMETERS:
     1. THE BASELINE: Establish what "Normal" looks like for this ${lookback}-day window.
@@ -154,6 +155,7 @@ export const getAthleteInteraction = async (
     - All wellness metrics are READINESS SCORES (1-7). Higher is better.
     - Stress Management: 7/7 is calm/optimal.
     - Muscle Freshness: 7/7 is fresh/no soreness.
+    - Wearable Score: 1-10 scale, but may be null. If null, acknowledge data is missing.
     - DO NOT suggest training changes.
     - DO NOT provide medical advice.
     - Focus strictly on System State and Biological Trends.
