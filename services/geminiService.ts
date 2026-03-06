@@ -52,6 +52,11 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
     CORE OBJECTIVE: 
     Identify "Biological Turbulence"—when the historical relationship (correlation) between metrics breaks. 
     Focus on "Decoupling" rather than just low scores.
+    
+    METRIC LOGIC:
+    - All wellness metrics (Energy, Freshness, Sleep, Stress Mgmt, Mood) are READINESS SCORES on a 1-7 scale.
+    - HIGHER is ALWAYS BETTER (e.g., 7/7 Stress Mgmt = Perfectly Calm; 7/7 Freshness = No Soreness).
+    - RPE is the only inverted metric (Higher = Higher Load).
 
     PATTERN RECOGNITION PARAMETERS:
     1. THE BASELINE: Establish what "Normal" looks like for this ${lookback}-day window.
@@ -146,6 +151,9 @@ export const getAthleteInteraction = async (
     TASK: ${specificInstruction}
 
     BOUNDARIES:
+    - All wellness metrics are READINESS SCORES (1-7). Higher is better.
+    - Stress Management: 7/7 is calm/optimal.
+    - Muscle Freshness: 7/7 is fresh/no soreness.
     - DO NOT suggest training changes.
     - DO NOT provide medical advice.
     - Focus strictly on System State and Biological Trends.
