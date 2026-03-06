@@ -53,12 +53,12 @@ const SubjectiveHeatmap = ({ entries }: { entries: WellnessEntry[] }) => {
 
   return (
     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
           <LayoutGrid className="w-5 h-5 text-indigo-600" />
           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Subjective Heatmap</h3>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
             <span className="text-[8px] font-bold text-slate-400 uppercase">Optimal</span>
@@ -361,14 +361,14 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] text-slate-900 font-sans p-8 overflow-y-auto">
       {/* Top Header / Navigation */}
-      <div className="flex justify-between items-start mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">{athlete.firstName} {athlete.lastName}</h2>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">
                 Focus: {athlete.trainingFocus?.replace('_', ' ') || 'NONE'}
               </span>
@@ -378,7 +378,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button 
             onClick={() => setShowConfig(true)}
             className="px-6 py-3 bg-white border border-slate-200 text-slate-700 text-[10px] font-black rounded-xl uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
@@ -500,12 +500,12 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
           {/* Right: Master Trend */}
           <div className="col-span-12 lg:col-span-8">
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="p-8 border-b border-slate-50 flex justify-between items-center">
-                <div>
+              <div className="p-8 border-b border-slate-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+                <div className="max-w-md">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Master Trend Engine</h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Longitudinal Covariance Analysis (RPE Offset Applied)</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Longitudinal Covariance Analysis (RPE Offset Applied)</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {['rpe', 'stress', 'sleep', 'energy', 'soreness'].map(key => (
                     <button 
                       key={key}
