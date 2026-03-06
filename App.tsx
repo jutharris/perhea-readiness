@@ -358,6 +358,7 @@ const App: React.FC = () => {
                 onNewReport={() => setActiveView('FORM')} 
                 onSubmaxTest={() => setActiveView('SUBMAX_TEST')}
                 hideAction={true}
+                onUserUpdate={(updatedUser: User) => setUser(updatedUser)}
               />
               {!user.coachId && !showInviteCard && (
                 <div className="p-10 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-center space-y-4">
