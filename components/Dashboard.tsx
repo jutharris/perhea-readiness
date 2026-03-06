@@ -33,14 +33,20 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
   }, [entries]);
 
   const toggleWearable = async () => {
+    const newVal = !user.hasWearable;
+    // Optimistic Update
+    if (onUserUpdate) {
+      onUserUpdate({ ...user, hasWearable: newVal });
+    }
+
     try {
       setIsUpdating(true);
-      const newVal = !user.hasWearable;
       await storageService.updateUserStatus(user.id, { hasWearable: newVal });
-      if (onUserUpdate) {
-        onUserUpdate({ ...user, hasWearable: newVal });
-      }
     } catch (err) {
+      // Rollback on error
+      if (onUserUpdate) {
+        onUserUpdate({ ...user, hasWearable: !newVal });
+      }
       alert("Failed to update device settings.");
     } finally {
       setIsUpdating(false);
@@ -65,9 +71,12 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
       {showSettings && (
         <div className="px-4 animate-in slide-in-from-top-4 duration-300">
           <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 shadow-xl text-left space-y-4">
-            <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center justify-between cursor-pointer group/row"
+              onClick={!isUpdating ? toggleWearable : undefined}
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center group-hover/row:bg-indigo-100 transition-colors">
                   <Watch className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
@@ -76,7 +85,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
                 </div>
               </div>
               <button 
-                onClick={toggleWearable}
+                type="button"
                 disabled={isUpdating}
                 className={`w-12 h-6 rounded-full transition-all relative ${user.hasWearable ? 'bg-indigo-600' : 'bg-slate-200'} ${isUpdating ? 'opacity-50' : 'opacity-100'}`}
               >
