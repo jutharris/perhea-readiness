@@ -64,8 +64,8 @@ const Sparkline: React.FC<{
               <ReferenceArea 
                 y1={Math.max(0, stats.mean - stats.stdDev)} 
                 y2={Math.min(yDomain[1], stats.mean + stats.stdDev)} 
-                fill="#f8fafc" 
-                fillOpacity={0.8} 
+                fill="#14b8a6" 
+                fillOpacity={0.15} 
                 stroke="none"
               />
             )}
@@ -79,18 +79,18 @@ const Sparkline: React.FC<{
               animationDuration={1000}
             />
 
-            {/* Normal Line */}
+            {/* Normal Line (Before Inflection) */}
             <Line 
               type="monotone" 
               data={normalData}
               dataKey={metricKey} 
-              stroke={isHighlighted ? "#cbd5e1" : "#4f46e5"} 
-              strokeWidth={isHighlighted ? 1 : 2} 
-              dot={data.length === 1}
+              stroke={isHighlighted ? "#e2e8f0" : "#4f46e5"} 
+              strokeWidth={isHighlighted ? 1.5 : 2} 
+              dot={false}
               animationDuration={1000}
             />
             
-            {/* Highlighted Line */}
+            {/* Highlighted Line (After Inflection) */}
             {isHighlighted && (
               <Line 
                 type="monotone" 
