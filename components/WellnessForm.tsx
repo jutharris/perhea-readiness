@@ -210,11 +210,11 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
         </div>
       </div>
 
-      {/* 4. Muscle Soreness (Flipped: 1=Sore, 7=None) */}
-      <SliderQuestion label="Muscle Soreness" value={data.soreness} minLabel="High (Sore)" maxLabel="None (Fresh)" onChange={(v: number) => setData({...data, soreness: v})} />
+      {/* 4. Muscle Freshness (1=Sore, 7=None) */}
+      <SliderQuestion label="Muscle Freshness" value={data.soreness} minLabel="High (Sore)" maxLabel="None (Fresh)" onChange={(v: number) => setData({...data, soreness: v})} />
 
-      {/* 5. Stress Levels (Flipped: 1=High, 7=None) */}
-      <SliderQuestion label="Stress Levels" value={data.stress} minLabel="High" maxLabel="None" onChange={(v: number) => setData({...data, stress: v})} />
+      {/* 5. Stress Management (1=High, 7=None) */}
+      <SliderQuestion label="Stress Management" value={data.stress} minLabel="High Stress" maxLabel="Calm/Resilient" onChange={(v: number) => setData({...data, stress: v})} />
 
       {/* 6. Mood / Social */}
       <SliderQuestion label="Mood / Social" value={data.social} minLabel="Irritable" maxLabel="Great" onChange={(v: number) => setData({...data, social: v})} />
