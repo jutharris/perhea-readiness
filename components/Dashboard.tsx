@@ -1,10 +1,13 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { WellnessEntry } from '../types';
 import { storageService } from '../services/storageService';
 import Insights from './Insights';
+import { Watch, Settings } from 'lucide-react';
 
-const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false }) => {
+const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false, onUserUpdate }) => {
+  const [showSettings, setShowSettings] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const regime = storageService.calculateRegime(entries, user.personalityCalibration);
 
   const statusMap = {
@@ -23,18 +26,69 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
     const metrics = [
       { name: 'Sleep Quality', val: l.sleepQuality, tip: 'Try a 10-min screen-free wind down tonight.' },
       { name: 'Energy', val: l.energy, tip: 'Focus on hydration and steady-state movement.' },
-      { name: 'Soreness', val: l.soreness, tip: 'Light mobility or contrast water therapy recommended.' },
-      { name: 'Stress', val: l.stress, tip: 'Consider a 5-minute focused breathing session.' }
+      { name: 'Freshness', val: l.soreness, tip: 'Light mobility or contrast water therapy recommended.' },
+      { name: 'Stress Mgmt', val: l.stress, tip: 'Consider a 5-minute focused breathing session.' }
     ];
     return metrics.sort((a, b) => a.val - b.val)[0];
   }, [entries]);
 
+  const toggleWearable = async () => {
+    try {
+      setIsUpdating(true);
+      const newVal = !user.hasWearable;
+      await storageService.updateUserStatus(user.id, { hasWearable: newVal });
+      if (onUserUpdate) {
+        onUserUpdate({ ...user, hasWearable: newVal });
+      }
+    } catch (err) {
+      alert("Failed to update device settings.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className={`space-y-8 text-center pb-12 min-h-screen transition-all duration-1000 bg-gradient-to-b ${currentStatus.color}`}>
-      <div className="text-left px-4 pt-4">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Daily Briefing</h1>
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Welcome back, {user.firstName || 'Athlete'}</p>
+      <div className="text-left px-4 pt-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Daily Briefing</h1>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Welcome back, {user.firstName || 'Athlete'}</p>
+        </div>
+        <button 
+          onClick={() => setShowSettings(!showSettings)}
+          className="p-2 bg-white/40 hover:bg-white/60 rounded-xl border border-white/20 transition-all"
+        >
+          <Settings className="w-5 h-5 text-slate-600" />
+        </button>
       </div>
+
+      {showSettings && (
+        <div className="px-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 shadow-xl text-left space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                  <Watch className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Wearable Device</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Garmin, Apple, Oura, etc.</p>
+                </div>
+              </div>
+              <button 
+                onClick={toggleWearable}
+                disabled={isUpdating}
+                className={`w-12 h-6 rounded-full transition-all relative ${user.hasWearable ? 'bg-indigo-600' : 'bg-slate-200'} ${isUpdating ? 'opacity-50' : 'opacity-100'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${user.hasWearable ? 'left-7' : 'left-1'}`}></div>
+              </button>
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
+              Enabling this adds "Wearable Recovery" to your daily audit, allowing the system to track divergence between your device and your biology.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="px-4">
         <Insights entries={entries} user={user} personalityCalibration={user.personalityCalibration} />
@@ -85,7 +139,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
               <p className="text-sm font-black text-slate-700">{entries[0].sleepHours}h ({entries[0].sleepQuality}/7)</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Stress</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Stress Mgmt</p>
               <p className="text-sm font-black text-slate-700">{entries[0].stress}/7</p>
             </div>
             <div className="space-y-1">
