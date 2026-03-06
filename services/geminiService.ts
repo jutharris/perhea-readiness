@@ -21,21 +21,13 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
   
-  // Progressive Lookback Logic
+  // Summary Lookback: Keep it lean for speed (Max 14 days for the fast summary)
   const entryCount = entries.length;
-  let lookback = 50;
+  const lookback = entryCount > 14 ? 14 : entryCount;
   let calibrationNote = "";
   
   if (entryCount <= 7) {
-    lookback = entryCount;
     calibrationNote = "System is in Initial Calibration Mode (Days 1-7). Focus on building baseline and establishing reporting consistency.";
-  } else if (entryCount <= 14) {
-    lookback = 7;
-    calibrationNote = "System is in Binary Calibration Phase (Days 8-14). Only 'Adapting' or 'Restoration' regimes are active. Focus on broad system stability.";
-  } else if (entryCount <= 29) {
-    lookback = 14;
-  } else if (entryCount <= 51) {
-    lookback = 28;
   }
   
   const contextData = entries.slice(0, lookback).map(e => ({
@@ -118,6 +110,7 @@ export const getAthleteInteraction = async (
   if (!ai) return "Interaction offline.";
 
   const entryCount = entries.length;
+  // Deep Lookback: Use full context for "Genius" interactions (Max 50 days)
   const lookback = entryCount > 50 ? 50 : entryCount;
   const contextData = entries.slice(0, lookback).map(e => ({
     date: e.isoDate.split('T')[0],
@@ -166,7 +159,7 @@ export const getAthleteInteraction = async (
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
       }
     });
     return response.text || JSON.stringify({ text: "I'm processing your data. Please try again." });
