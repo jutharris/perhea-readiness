@@ -10,9 +10,10 @@ import {
 
 interface AdminDashboardProps {
   onBack: () => void;
+  onOpenCreatorLab: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLab }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -95,13 +96,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Global System Control</p>
               </div>
             </div>
-            <button 
-              onClick={fetchData} 
-              className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onOpenCreatorLab}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black rounded-xl uppercase tracking-widest transition-all shadow-lg shadow-indigo-900/20"
+              >
+                <Zap className="w-3 h-3 fill-white" />
+                Creator Lab
+              </button>
+              <button 
+                onClick={fetchData} 
+                className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors"
+                title="Refresh Data"
+              >
+                <RefreshCw className={`w-5 h-5 text-slate-300 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
