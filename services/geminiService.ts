@@ -2,6 +2,8 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { WellnessEntry, User, IntelligencePacket } from "../types";
 
+import { storageService } from "./storageService";
+
 /**
  * Returns a GoogleGenAI instance initialized with the API key from environment.
  */
@@ -15,14 +17,29 @@ const getAIInstance = () => {
  * Analyzes individual athlete wellness data using a Turbulence Model (Multivariate Decoupling).
  * Uses a progressive baseline to establish "Normal Regimes."
  */
-export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, systemInstruction?: string) => {
+export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, customInstruction?: string) => {
   if (entries.length === 0) return "Your insights get sharper every week. Keep reporting!";
   
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
+
+  const soulDoc = await storageService.getGlobalSoulDocument();
   
   const role = user.role;
   const intelligencePacket = user.intelligencePacket;
+
+  const personalityDirectives = {
+    STOIC: "This athlete is STOIC. They under-report pain and fatigue. If they report any dip at all, prioritize it as a significant physiological event. Be highly sensitive to small changes.",
+    BALANCED: "This athlete is BALANCED. Their reporting is generally reliable and proportional to their state.",
+    EXPRESSIVE: "This athlete is EXPRESSIVE. They report based on current mood and 'vibes', which can be volatile. Filter for the signal within the noise; do not overreact to single-day swings."
+  }[user.personalityCalibration] || "";
+
+  const systemInstruction = customInstruction || `${soulDoc}
+  ${personalityDirectives}
+  Do not be overly reactive to single-day dips unless the personality calibration suggests otherwise. 
+  Focus on long-term trends and provide physiological context without being overly technical or prescriptive.
+  Keep your response concise (2-3 sentences).
+  Avoid definitive medical judgments.`;
 
   // Summary Lookback: Keep it lean for speed (Max 14 days for the fast summary)
   const entryCount = entries.length;
