@@ -19,7 +19,7 @@ PerHea doesn't just look at heart rate; it looks at the *human*. By capturing th
 
 ---
 
-## 🛠️ The CTO's Brief: Architecture & Intelligence
+## Architecture & Intelligence
 
 PerHea is built for speed, data integrity, and deep reasoning.
 
