@@ -15,6 +15,7 @@ const MISSION_BENCHMARKS: Record<PlannedMissionType, number> = {
 };
 
 const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete: () => void }> = ({ user, entries, onComplete }) => {
+  const [showPrime, setShowPrime] = useState(entries.length < 7);
   const [data, setData] = useState({ 
     sessionType: 'TRAINING' as SessionType, 
     plannedMissionType: 'AEROBIC_BASE' as PlannedMissionType,
@@ -32,6 +33,39 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
     comments: '' 
   });
   const [loading, setLoading] = useState(false);
+
+  const PRIMES = [
+    {
+      title: "The Sensor vs. The Soul",
+      message: "Welcome to the Arena. Most apps treat you like a machine to be tracked. We treat you like a human to be audited. Your watch knows your pulse; only you know your soul. Today, don't just type numbers. Listen to the system."
+    },
+    {
+      title: "The Analog Advantage",
+      message: "Why are we asking how you feel? Because 'Perceived Effort' is the most accurate predictor of performance ever discovered. Your brain integrates millions of signals your watch can't see. Today, trust your gut over your gadgets."
+    },
+    {
+      title: "The Hooper-Mackinnon Protocol",
+      message: "We use the Hooper-Mackinnon model—the gold standard for elite readiness. By tracking Energy, Stress, Sleep, and Soreness, we map your internal 'Turbulence.' You're halfway to your first Bio Law. Stay the course."
+    },
+    {
+      title: "The Divergence Signal",
+      message: "Ever feel 'crushed' but your watch says 90% recovery? That's a Divergence. It’s the most dangerous moment for an athlete. We are looking for these gaps to protect you from the 'hidden' injury. Keep providing the truth."
+    },
+    {
+      title: "The Bio-Law Architecture",
+      message: "An AI is only as smart as its context. Every entry you provide is building your 'Intelligence Packet.' We aren't just logging data; we are writing the laws of your unique biology. 2 days until the first reveal."
+    },
+    {
+      title: "The Regime Shift",
+      message: "Data is noise without action. Soon, your audits won't just be records—they will be 'Regime' commands: Adapt, Build, or Restoration. You are training the system to know when to push and when to pivot. One day left."
+    },
+    {
+      title: "The Reveal",
+      message: "Final baseline entry. Today, the 'Analog' meets the 'AI.' After this audit, the system will synthesize your first 7 days into your first Bio Law. This is where the diary ends and the coaching begins. Finish strong."
+    }
+  ];
+
+  const currentPrime = PRIMES[entries.length];
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +92,7 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
       const lastAudit = user.intelligencePacket?.lastDeepAudit;
       const shouldAudit = !lastAudit || (new Date().getTime() - new Date(lastAudit).getTime()) > 7 * 24 * 60 * 60 * 1000;
       
-      if (shouldAudit && entries.length >= 7) {
+      if (shouldAudit && entries.length >= 6) { // >= 6 because we just saved the 7th
         // Trigger background audit (don't await to keep UI snappy)
         getDeepAudit([entry, ...entries]).then(packet => {
           storageService.updateUserStatus(user.id, { intelligencePacket: packet });
@@ -94,6 +128,34 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
       </div>
     </div>
   );
+
+  if (showPrime && currentPrime) {
+    return (
+      <div className="max-w-md mx-auto min-h-[70vh] flex flex-col items-center justify-center space-y-12 px-6 py-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center text-white font-black text-3xl shadow-2xl shadow-indigo-200">
+          {entries.length + 1}
+        </div>
+        
+        <div className="text-center space-y-6">
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Baseline Protocol: Day {entries.length + 1}/7</p>
+            <h2 className="text-4xl font-black text-slate-900 italic uppercase tracking-tight leading-none">{currentPrime.title}</h2>
+          </div>
+          
+          <p className="text-lg font-medium text-slate-600 leading-relaxed">
+            {currentPrime.message}
+          </p>
+        </div>
+
+        <button 
+          onClick={() => setShowPrime(false)}
+          className="w-full py-6 bg-slate-900 text-white font-black rounded-[2.5rem] shadow-2xl shadow-slate-200 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest text-sm"
+        >
+          Continue to Audit
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="max-w-md mx-auto space-y-6 pb-20">
