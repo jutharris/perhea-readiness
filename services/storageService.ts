@@ -59,7 +59,7 @@ export const storageService = {
         queuedAlert: profileData.queued_alert,
         lastActiveAt: profileData.last_active_at,
         hasWearable: !!profileData.has_wearable,
-        intelligencePacket: storageService.getIntelligencePacket(userId)
+        intelligencePacket: profileData.intelligence_packet
       };
     } catch (err) {
       return null;
@@ -308,20 +308,34 @@ export const storageService = {
     if (updates.hasWearable !== undefined) dbUpdates.has_wearable = updates.hasWearable;
 
     if (updates.intelligencePacket !== undefined) {
-      storageService.saveIntelligencePacket(userId, updates.intelligencePacket);
+      dbUpdates.intelligence_packet = updates.intelligencePacket;
     }
 
     const { error } = await supabase!.from('profiles').update(dbUpdates).eq('id', userId);
     if (error) throw error;
   },
 
-  saveIntelligencePacket: (userId: string, packet: IntelligencePacket) => {
-    localStorage.setItem(`perhea_intel_${userId}`, JSON.stringify(packet));
+  getGlobalSoulDocument: async (): Promise<string> => {
+    checkConfig();
+    const { data, error } = await supabase!
+      .from('global_config')
+      .select('soul_document')
+      .eq('id', 'MASTER_SOUL')
+      .single();
+    
+    if (error) {
+      console.warn("Could not fetch Soul Document, using fallback.");
+      return "You are an AI Assistant Coach. Be supportive and concise.";
+    }
+    return data.soul_document;
   },
 
-  getIntelligencePacket: (userId: string): IntelligencePacket | undefined => {
-    const data = localStorage.getItem(`perhea_intel_${userId}`);
-    return data ? JSON.parse(data) : undefined;
+  updateGlobalSoulDocument: async (newDoc: string) => {
+    checkConfig();
+    const { error } = await supabase!
+      .from('global_config')
+      .upsert({ id: 'MASTER_SOUL', soul_document: newDoc, updated_at: new Date().toISOString() });
+    if (error) throw error;
   },
 
   getGlobalMetrics: async () => {
