@@ -56,7 +56,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
       Keep your response concise (2-3 sentences).
       Avoid definitive medical judgments.`;
 
-      getAthleteAnalysis(entries, role, systemInstruction).then(res => {
+      getAthleteAnalysis(entries, user, systemInstruction).then(res => {
         setAnalysis(res);
         localStorage.setItem(cacheKey, res);
         setLoading(false);
