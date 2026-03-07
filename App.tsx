@@ -383,6 +383,7 @@ const App: React.FC = () => {
       {activeView === 'FORM' && user && (
         <WellnessForm 
           user={user} 
+          entries={entries}
           onComplete={async () => { 
             setAuditProcessingStep('LOADING');
             
