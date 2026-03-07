@@ -58,7 +58,8 @@ export const storageService = {
         isFrozen: !!profileData.is_frozen,
         queuedAlert: profileData.queued_alert,
         lastActiveAt: profileData.last_active_at,
-        hasWearable: !!profileData.has_wearable
+        hasWearable: !!profileData.has_wearable,
+        intelligencePacket: storageService.getIntelligencePacket(userId)
       };
     } catch (err) {
       return null;
@@ -306,8 +307,21 @@ export const storageService = {
     if (updates.role !== undefined) dbUpdates.role = updates.role;
     if (updates.hasWearable !== undefined) dbUpdates.has_wearable = updates.hasWearable;
 
+    if (updates.intelligencePacket !== undefined) {
+      storageService.saveIntelligencePacket(userId, updates.intelligencePacket);
+    }
+
     const { error } = await supabase!.from('profiles').update(dbUpdates).eq('id', userId);
     if (error) throw error;
+  },
+
+  saveIntelligencePacket: (userId: string, packet: IntelligencePacket) => {
+    localStorage.setItem(`perhea_intel_${userId}`, JSON.stringify(packet));
+  },
+
+  getIntelligencePacket: (userId: string): IntelligencePacket | undefined => {
+    const data = localStorage.getItem(`perhea_intel_${userId}`);
+    return data ? JSON.parse(data) : undefined;
   },
 
   getGlobalMetrics: async () => {
