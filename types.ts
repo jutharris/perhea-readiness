@@ -77,7 +77,7 @@ export interface InteractionResponse {
   text: string;
 }
 
-export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD';
+export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD' | 'CREATOR_LAB';
 
 export interface SubmaxTest {
   id: string;
