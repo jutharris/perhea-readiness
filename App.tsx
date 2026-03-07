@@ -12,6 +12,7 @@ import SubmaxLab from './components/SubmaxLab';
 import AuditProcessingOverlay from './components/AuditProcessingOverlay';
 import CoachCorner from './components/CoachCorner';
 import AdminDashboard from './components/AdminDashboard';
+import CreatorLab from './components/CreatorLab';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View } from './types';
@@ -426,6 +427,10 @@ const App: React.FC = () => {
             setActiveView('COACH_DASHBOARD'); 
           }} 
         />
+      )}
+
+      {activeView === 'CREATOR_LAB' && user?.role === 'ADMIN' && (
+        <CreatorLab />
       )}
       
       {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
