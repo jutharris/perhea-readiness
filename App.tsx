@@ -311,7 +311,10 @@ const App: React.FC = () => {
         <AuditProcessingOverlay step={auditProcessingStep} />
       )}
       {activeView === 'ADMIN_DASHBOARD' && user?.role === 'ADMIN' && (
-        <AdminDashboard onBack={() => setActiveView('COACH_DASHBOARD')} />
+        <AdminDashboard 
+          onBack={() => setActiveView('COACH_DASHBOARD')} 
+          onOpenCreatorLab={() => setActiveView('CREATOR_LAB')} 
+        />
       )}
       {activeView === 'ONBOARDING' && user && (
         <Onboarding user={user} onComplete={(updatedUser) => {
@@ -430,7 +433,7 @@ const App: React.FC = () => {
       )}
 
       {activeView === 'CREATOR_LAB' && user?.role === 'ADMIN' && (
-        <CreatorLab />
+        <CreatorLab onBack={() => setActiveView('ADMIN_DASHBOARD')} />
       )}
       
       {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
