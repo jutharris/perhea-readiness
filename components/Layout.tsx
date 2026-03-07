@@ -14,7 +14,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, onLogout, hideNav }) => {
   const isCoach = user?.role === 'COACH';
   const isPending = user?.role === 'PENDING';
-  const isAdminView = activeView === 'ADMIN_DASHBOARD';
+  const isAdminView = activeView === 'ADMIN_DASHBOARD' || activeView === 'CREATOR_LAB';
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-500 ${isAdminView ? 'bg-slate-950' : 'bg-slate-50'}`}>
