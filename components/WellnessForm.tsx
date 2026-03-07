@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import SliderQuestion from './SliderQuestion';
 import { storageService } from '../services/storageService';
-import { SessionType, PlannedMissionType } from '../types';
+import { getDeepAudit } from '../services/geminiService';
+import { SessionType, PlannedMissionType, WellnessEntry, User } from '../types';
 
 const MISSION_BENCHMARKS: Record<PlannedMissionType, number> = {
   RECOVERY: 1.5,
@@ -13,7 +14,7 @@ const MISSION_BENCHMARKS: Record<PlannedMissionType, number> = {
   LONG_ENDURANCE: 5
 };
 
-const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
+const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete: () => void }> = ({ user, entries, onComplete }) => {
   const [data, setData] = useState({ 
     sessionType: 'TRAINING' as SessionType, 
     plannedMissionType: 'AEROBIC_BASE' as PlannedMissionType,
@@ -46,12 +47,24 @@ const WellnessForm: React.FC<any> = ({ user, onComplete }) => {
         divergenceIntensity = data.lastSessionRPE - benchmark;
       }
 
-      await storageService.saveEntry({ 
+      const entry = await storageService.saveEntry({ 
         ...data, 
         userId: user.id, 
         sleepHours: Number(data.sleepHours),
         divergenceIntensity
       });
+
+      // 2. Check if Deep Audit is needed (Every 7 days or if missing)
+      const lastAudit = user.intelligencePacket?.lastDeepAudit;
+      const shouldAudit = !lastAudit || (new Date().getTime() - new Date(lastAudit).getTime()) > 7 * 24 * 60 * 60 * 1000;
+      
+      if (shouldAudit && entries.length >= 7) {
+        // Trigger background audit (don't await to keep UI snappy)
+        getDeepAudit([entry, ...entries]).then(packet => {
+          storageService.updateUserStatus(user.id, { intelligencePacket: packet });
+        });
+      }
+
       onComplete();
     } catch (err) {
       alert("Error saving report.");
