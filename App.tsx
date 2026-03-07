@@ -13,6 +13,7 @@ import AuditProcessingOverlay from './components/AuditProcessingOverlay';
 import CoachCorner from './components/CoachCorner';
 import AdminDashboard from './components/AdminDashboard';
 import CreatorLab from './components/CreatorLab';
+import OnboardingEducation from './components/OnboardingEducation';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View } from './types';
@@ -138,6 +139,8 @@ const App: React.FC = () => {
         setUser(profile);
         if (profile.role === 'ADMIN') {
           setActiveView('ADMIN_DASHBOARD');
+        } else if (profile.role === 'ATHLETE' && !profile.intelligencePacket?.hasSeenEducation) {
+          setActiveView('ONBOARDING_EDUCATION');
         } else {
           setActiveView(profile.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
         }
@@ -319,8 +322,21 @@ const App: React.FC = () => {
       {activeView === 'ONBOARDING' && user && (
         <Onboarding user={user} onComplete={(updatedUser) => {
           setUser(updatedUser);
-          setActiveView(updatedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          if (updatedUser.role === 'ATHLETE' && !updatedUser.intelligencePacket?.hasSeenEducation) {
+            setActiveView('ONBOARDING_EDUCATION');
+          } else {
+            setActiveView(updatedUser.role === 'COACH' ? 'COACH_DASHBOARD' : 'DASHBOARD');
+          }
           refreshData(updatedUser);
+        }} />
+      )}
+      {activeView === 'ONBOARDING_EDUCATION' && user && (
+        <OnboardingEducation onComplete={async () => {
+          const updatedPacket = { ...(user.intelligencePacket || { laws: [], lastDeepAudit: new Date().toISOString() }), hasSeenEducation: true };
+          await storageService.updateUserStatus(user.id, { intelligencePacket: updatedPacket });
+          const updatedUser = { ...user, intelligencePacket: updatedPacket };
+          setUser(updatedUser);
+          setActiveView('DASHBOARD');
         }} />
       )}
       {activeView === 'DASHBOARD' && user && (
