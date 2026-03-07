@@ -25,6 +25,7 @@ export interface BiologicalLaw {
 export interface IntelligencePacket {
   laws: BiologicalLaw[];
   lastDeepAudit: string;
+  hasSeenEducation?: boolean;
 }
 
 export interface User {
@@ -77,7 +78,7 @@ export interface InteractionResponse {
   text: string;
 }
 
-export type View = 'LOGIN' | 'ONBOARDING' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD' | 'CREATOR_LAB';
+export type View = 'LOGIN' | 'ONBOARDING' | 'ONBOARDING_EDUCATION' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD' | 'CREATOR_LAB';
 
 export interface SubmaxTest {
   id: string;
