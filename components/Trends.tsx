@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { WellnessEntry, User } from '../types';
+import { WellnessEntry, User, IntelligencePacket } from '../types';
 import { storageService } from '../services/storageService';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -123,6 +123,43 @@ const Sparkline: React.FC<{
   );
 };
 
+const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet }) => {
+  if (!packet) return null;
+  
+  return (
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse"></div>
+        <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Biological Identity (50-Day Holy Grail)</h3>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {packet.laws.sort((a,b) => a.horizon - b.horizon).map(law => (
+          <div key={law.horizon} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{law.horizon}-Day {law.horizon === 50 ? 'Identity' : law.horizon === 28 ? 'Signature' : law.horizon === 14 ? 'Adaptation' : 'Vibe'}</span>
+              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                law.status === 'STABLE' ? 'bg-emerald-500/10 text-emerald-400' : 
+                law.status === 'TURBULENT' ? 'bg-rose-500/10 text-rose-400' : 
+                'bg-indigo-500/10 text-indigo-400'
+              }`}>{law.status}</span>
+            </div>
+            <ul className="space-y-1">
+              {law.laws.map((l, i) => (
+                <li key={i} className="text-xs font-medium text-slate-300 leading-relaxed">• {l}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      
+      <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
+        Last Deep Audit: {new Date(packet.lastDeepAudit).toLocaleDateString()}
+      </p>
+    </div>
+  );
+};
+
 const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
   const [inflectionPoint, setInflectionPoint] = useState<{ metric: string; date: string } | null>(null);
 
@@ -191,6 +228,8 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
         <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Vital Signs</h2>
         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">14-Day System Trajectory</p>
       </div>
+
+      <BiologicalIdentity packet={user.intelligencePacket} />
 
       {/* sRPE Bar Chart - The Load Foundation */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
