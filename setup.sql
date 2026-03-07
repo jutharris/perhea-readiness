@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   is_frozen BOOLEAN DEFAULT false,
   has_wearable BOOLEAN DEFAULT true,
   queued_alert TEXT,
+  intelligence_packet TEXT,
   last_active_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -82,7 +83,14 @@ CREATE TABLE IF NOT EXISTS public.submax_tests (
   elapsed_end_sec NUMERIC,
   summary JSONB,
   data JSONB,
+  tags TEXT[],
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.global_config (
+  id TEXT PRIMARY KEY,
+  soul_document TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. SECURITY (RLS)
@@ -91,6 +99,7 @@ ALTER TABLE public.wellness_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.global_config ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
@@ -103,6 +112,8 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Coaches view squad tests" ON public.submax_tests;
     DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
     DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+    DROP POLICY IF EXISTS "Allow public read access to global_config" ON public.global_config;
+    DROP POLICY IF EXISTS "Allow authenticated updates to global_config" ON public.global_config;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 -- Policies
@@ -150,3 +161,17 @@ CREATE POLICY "Users can send messages" ON public.messages FOR INSERT WITH CHECK
 CREATE POLICY "Users can update their own received messages" ON public.messages FOR UPDATE USING (
   auth.uid() = receiver_id
 );
+
+-- Global Config Policies
+CREATE POLICY "Allow public read access to global_config" ON public.global_config FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated updates to global_config" ON public.global_config FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+
+-- Seed Data
+INSERT INTO public.global_config (id, soul_document)
+VALUES (
+  'MASTER_SOUL', 
+  'You are the PerHea AI Performance Director. Your tone is elite, clinical, yet deeply human. You use the Hooper-Mackinnon model to analyze readiness. You prioritize long-term adaptation over short-term gains. Be concise, authoritative, and always look for the "analog" story behind the digital metrics.'
+)
+ON CONFLICT (id) DO NOTHING;
