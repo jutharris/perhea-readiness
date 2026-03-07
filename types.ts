@@ -15,6 +15,18 @@ export interface Message {
   read: boolean;
 }
 
+export interface BiologicalLaw {
+  horizon: 7 | 14 | 28 | 50;
+  laws: string[];
+  lastUpdated: string;
+  status: 'STABLE' | 'TURBULENT' | 'EVOLVING';
+}
+
+export interface IntelligencePacket {
+  laws: BiologicalLaw[];
+  lastDeepAudit: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -31,6 +43,7 @@ export interface User {
   queuedAlert?: string | null;
   lastActiveAt?: string;
   hasWearable?: boolean;
+  intelligencePacket?: IntelligencePacket;
 }
 
 // Added WellnessEntry interface to track daily athlete status and internal load metrics
