@@ -24,7 +24,7 @@ PerHea doesn't just look at heart rate; it looks at the *human*. By capturing th
 PerHea is built for speed, data integrity, and deep reasoning.
 
 ### The Intelligence Stack
-- **Gemini 3.1 Pro reasoning:** We don't use LLMs for "chat." We use them as a **Reasoning Engine**. The AI analyzes 30-day trends, cross-references them with "Bio Laws," and outputs clinical coaching adjustments.
+- **Gemini 3.1 Pro reasoning:** We don't use LLMs for "chat." We use them as a **Reasoning Engine**. The AI analyzes 7, 14, 28, and 50-day trends, cross-references them with "Bio Laws," and outputs clinical coaching adjustments.
 - **Bio Laws (Intelligence Packet):** Every athlete has a persistent "Intelligence Packet" in Supabase. This is the AI's evolving memory of that athlete's unique biological response to stress.
 - **Global DNA (Soul Document):** System-wide coaching logic is stored in a `global_config` table, allowing for real-time, hot-swappable AI personalities and decision-making frameworks.
 
