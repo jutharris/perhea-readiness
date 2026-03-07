@@ -308,7 +308,7 @@ const App: React.FC = () => {
       setView={setActiveView} 
       user={user} 
       onLogout={handleLogout}
-      hideNav={user?.role === 'ATHLETE' && !hasSubmittedToday}
+      hideNav={(user?.role === 'ATHLETE' && !hasSubmittedToday) || activeView === 'ONBOARDING_EDUCATION'}
     >
       {auditProcessingStep && (
         <AuditProcessingOverlay step={auditProcessingStep} />
@@ -452,7 +452,7 @@ const App: React.FC = () => {
         <CreatorLab onBack={() => setActiveView('ADMIN_DASHBOARD')} />
       )}
       
-      {user?.role === 'ATHLETE' && <CoachCorner user={user} />}
+      {user?.role === 'ATHLETE' && activeView !== 'ONBOARDING_EDUCATION' && <CoachCorner user={user} />}
     </Layout>
   );
 };
