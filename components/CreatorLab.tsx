@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
 import { motion } from 'motion/react';
-import { Save, Shield, Zap, Database } from 'lucide-react';
+import { Save, Shield, Zap, Database, ArrowLeft } from 'lucide-react';
 
-const CreatorLab: React.FC = () => {
+interface CreatorLabProps {
+  onBack: () => void;
+}
+
+const CreatorLab: React.FC<CreatorLabProps> = ({ onBack }) => {
   const [soulDoc, setSoulDoc] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,12 +46,20 @@ const CreatorLab: React.FC = () => {
       className="max-w-4xl mx-auto space-y-8 pb-20"
     >
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black text-slate-900 italic uppercase tracking-tighter flex items-center gap-3">
-            <Shield className="w-8 h-8 text-indigo-600" />
-            Creator Lab
-          </h2>
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Master System Configuration</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack}
+            className="p-3 hover:bg-slate-100 rounded-2xl transition-colors text-slate-400"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="space-y-1">
+            <h2 className="text-4xl font-black text-slate-900 italic uppercase tracking-tighter flex items-center gap-3">
+              <Shield className="w-8 h-8 text-indigo-600" />
+              Creator Lab
+            </h2>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Master System Configuration</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100">
           <Zap className="w-3 h-3 text-indigo-600 fill-indigo-600" />
