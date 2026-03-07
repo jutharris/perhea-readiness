@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import { WellnessEntry, User, UserRole } from "../types";
+import { WellnessEntry, User, IntelligencePacket } from "../types";
 
 /**
  * Returns a GoogleGenAI instance initialized with the API key from environment.
@@ -15,12 +15,15 @@ const getAIInstance = () => {
  * Analyzes individual athlete wellness data using a Turbulence Model (Multivariate Decoupling).
  * Uses a progressive baseline to establish "Normal Regimes."
  */
-export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRole = 'ATHLETE', systemInstruction?: string) => {
+export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, systemInstruction?: string) => {
   if (entries.length === 0) return "Your insights get sharper every week. Keep reporting!";
   
   const ai = getAIInstance();
   if (!ai) return "Performance Partner offline.";
   
+  const role = user.role;
+  const intelligencePacket = user.intelligencePacket;
+
   // Summary Lookback: Keep it lean for speed (Max 14 days for the fast summary)
   const entryCount = entries.length;
   const lookback = entryCount > 14 ? 14 : entryCount;
@@ -42,11 +45,18 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
     injured: e.injured,
     comments: e.comments
   }));
+
+  const lawsContext = intelligencePacket?.laws.map(l => 
+    `${l.horizon}-Day Law (${l.status}): ${l.laws.join('; ')}`
+  ).join('\n') || "No Biological Laws established yet.";
   
   const prompt = `
     Act as a Performance Scientist specializing in Multivariate Turbulence Models.
     Review the last ${lookback} entries of athlete data: ${JSON.stringify(contextData)}.
     
+    BIOLOGICAL LAWS (Historical Context):
+    ${lawsContext}
+
     CURRENT CALIBRATION PHASE: ${calibrationNote || "Full Baseline Established."}
 
     CORE OBJECTIVE: 
@@ -69,6 +79,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], role: UserRol
        - Use "iPhone-style" clarity: subtle, professional.
        - Provide "Permission to Rest" if turbulence is high.
        - Provide "Confidence to Push" if metrics are stable.
+       - Use the "Budget Framework": If an athlete is deep in the red, suggest finding a "Recovery Budget" over the next 72 hours rather than telling them to skip training.
 
     OUTPUT STYLE:
     - 2 sentences of high-density insight.
@@ -186,6 +197,81 @@ export const getAthleteInteraction = async (
     } catch (innerError) {
       return JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
     }
+  }
+};
+
+/**
+ * Performs a "Deep Audit" of an athlete's raw data to establish tiered Biological Laws.
+ * This is the "Heavy Lift" that runs in the background.
+ */
+export const getDeepAudit = async (entries: WellnessEntry[]): Promise<IntelligencePacket> => {
+  const ai = getAIInstance();
+  if (!ai) throw new Error("AI Instance unavailable for Deep Audit.");
+
+  const contextData = entries.slice(0, 50).map(e => ({
+    date: e.isoDate.split('T')[0],
+    rpe: e.lastSessionRPE,
+    energy: e.energy,
+    soreness: e.soreness,
+    sleep: e.sleepQuality,
+    sleepHrs: e.sleepHours,
+    stress: e.stress,
+    sick: e.feelingSick,
+    injured: e.injured,
+    comments: e.comments
+  }));
+
+  const prompt = `
+    Act as a High-Performance Scientist and Biological Historian.
+    Analyze the last 50 days of raw athlete data: ${JSON.stringify(contextData)}.
+    
+    TASK:
+    Establish "Biological Laws" for four nested horizons: 7, 14, 28, and 50 days.
+    
+    DEFINITIONS:
+    - 7-Day (The Vibe): Acute trends, immediate responses to life stress or illness.
+    - 14-Day (The Adaptation): How the athlete is absorbing the current training block.
+    - 28-Day (The Signature): Hormonal cycles, chronic load capacity, and deep patterns.
+    - 50-Day (The Identity): The "Holy Grail" of who this athlete is at their core.
+
+    FOR EACH HORIZON, IDENTIFY:
+    1. The primary "Law" (a distilled biological truth about this athlete).
+    2. The status (STABLE, TURBULENT, or EVOLVING).
+
+    PHILOSOPHY:
+    - Search for "Decoupling" (e.g., "Law: Energy is highly sensitive to sleep quality, dropping 2 points for every 1 hour lost").
+    - Identify "Leading Indicators" (e.g., "Law: Stress Mgmt drops 48 hours before physical energy failure").
+
+    Format your response as a JSON object:
+    {
+      "laws": [
+        { "horizon": 7, "laws": ["law 1", "law 2"], "status": "STABLE" },
+        ...
+      ]
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
+      }
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    return {
+      laws: result.laws.map((l: any) => ({
+        ...l,
+        lastUpdated: new Date().toISOString()
+      })),
+      lastDeepAudit: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Deep Audit Error:", error);
+    throw error;
   }
 };
 
