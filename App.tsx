@@ -264,7 +264,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-white flex flex-col items-center px-6 pt-24 pb-12 overflow-y-auto">
         <div className="w-full max-w-[400px] text-center space-y-4">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100 mb-6">P</div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Elite Performance Monitor</h1>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Where analog meets AI</h1>
           <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol for athletes and coaches.</p>
           
           <div className="pt-10 space-y-3">
