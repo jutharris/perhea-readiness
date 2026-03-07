@@ -4,7 +4,7 @@
 
 ---
 
-## 💎 The Investor's Vision: Scalable Human Performance
+## Scalable Human Performance
 
 ### The Problem
 In the $50B+ sports tech market, coaches are drowning in data but starving for insight. Wearables provide "what" happened, but they fail to explain "why" or "what next." This gap leads to overtraining, injury, and suboptimal performance.
