@@ -59,7 +59,7 @@ export const storageService = {
         queuedAlert: profileData.queued_alert,
         lastActiveAt: profileData.last_active_at,
         hasWearable: !!profileData.has_wearable,
-        timezone: profileData.timezone || 'UTC',
+        timezone: profileData.timezone || 'America/New_York',
         intelligencePacket: profileData.intelligence_packet
       };
     } catch (err) {
@@ -68,7 +68,7 @@ export const storageService = {
   },
 
   // First-time record creation in public.profiles
-  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string, hasWearable: boolean = true, timezone: string = 'UTC'): Promise<User> => {
+  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string, hasWearable: boolean = true, timezone: string = 'America/New_York'): Promise<User> => {
     checkConfig();
     
     const insertData: any = {
@@ -110,7 +110,7 @@ export const storageService = {
       queuedAlert: data.queued_alert,
       lastActiveAt: data.last_active_at,
       hasWearable: !!data.has_wearable,
-      timezone: data.timezone || 'UTC'
+      timezone: data.timezone || 'America/New_York'
     };
   },
 
