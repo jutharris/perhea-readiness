@@ -59,6 +59,7 @@ export const storageService = {
         queuedAlert: profileData.queued_alert,
         lastActiveAt: profileData.last_active_at,
         hasWearable: !!profileData.has_wearable,
+        timezone: profileData.timezone || 'UTC',
         intelligencePacket: profileData.intelligence_packet
       };
     } catch (err) {
@@ -67,7 +68,7 @@ export const storageService = {
   },
 
   // First-time record creation in public.profiles
-  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string, hasWearable: boolean = true): Promise<User> => {
+  initializeProfile: async (userId: string, email: string, firstName: string, lastName: string, role: UserRole, birthDate?: string, hasWearable: boolean = true, timezone: string = 'UTC'): Promise<User> => {
     checkConfig();
     
     const insertData: any = {
@@ -77,7 +78,8 @@ export const storageService = {
       last_name: lastName,
       role: role,
       birth_date: birthDate || null,
-      has_wearable: hasWearable
+      has_wearable: hasWearable,
+      timezone: timezone
     };
 
     if (role === 'COACH') {
@@ -107,7 +109,8 @@ export const storageService = {
       isFrozen: !!data.is_frozen,
       queuedAlert: data.queued_alert,
       lastActiveAt: data.last_active_at,
-      hasWearable: !!data.has_wearable
+      hasWearable: !!data.has_wearable,
+      timezone: data.timezone || 'UTC'
     };
   },
 
@@ -307,6 +310,7 @@ export const storageService = {
     if (updates.queuedAlert !== undefined) dbUpdates.queued_alert = updates.queuedAlert;
     if (updates.role !== undefined) dbUpdates.role = updates.role;
     if (updates.hasWearable !== undefined) dbUpdates.has_wearable = updates.hasWearable;
+    if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
 
     if (updates.intelligencePacket !== undefined) {
       dbUpdates.intelligence_packet = updates.intelligencePacket;
