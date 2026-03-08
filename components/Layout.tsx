@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { View, User } from '../types';
+import Logo from './Logo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,10 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
     <div className={`min-h-screen flex flex-col transition-colors duration-500 ${isAdminView ? 'bg-slate-950' : 'bg-slate-50'}`}>
       <header className={`${isAdminView ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-100'} backdrop-blur-md border-b sticky top-0 z-50 transition-colors duration-500`}>
         <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className={`w-8 h-8 ${isAdminView ? 'bg-indigo-500' : 'bg-indigo-600'} rounded-lg flex items-center justify-center text-white font-black text-lg transition-colors`}>P</div>
-            <h1 className={`text-lg font-black ${isAdminView ? 'text-white' : 'text-slate-900'} transition-colors`}>PerHea</h1>
-          </div>
+          <Logo size="sm" inverted={isAdminView} />
           {user && (
             <div className="flex items-center gap-4">
               <span className={`text-[10px] font-black ${isAdminView ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 bg-slate-50'} px-3 py-1 rounded-full uppercase tracking-widest transition-colors`}>{user.role}</span>
