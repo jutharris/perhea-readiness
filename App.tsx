@@ -269,8 +269,8 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-white flex flex-col items-center px-6 pt-24 pb-12 overflow-y-auto">
         <div className="w-full max-w-[400px] text-center space-y-4">
           <Logo size="xl" className="justify-center mb-8" />
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Where analog meets AI</h1>
-          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol for athletes and coaches.</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">The intersection of performance and health</h1>
+          <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol where analog meets AI for athletes and coaches.</p>
           
           <div className="pt-10 space-y-3">
             <button disabled={actionLoading} onClick={() => handleSocialAuth('google')} className="w-full py-5 px-6 border-2 border-slate-100 rounded-2xl font-black text-slate-700 flex items-center justify-center gap-4 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50">
