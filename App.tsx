@@ -14,12 +14,12 @@ import CoachCorner from './components/CoachCorner';
 import AdminDashboard from './components/AdminDashboard';
 import CreatorLab from './components/CreatorLab';
 import OnboardingEducation from './components/OnboardingEducation';
+import Logo from './components/Logo';
 import { storageService } from './services/storageService';
 import { isSupabaseConfigured, supabase } from './services/supabaseClient';
 import { User, WellnessEntry, View, SubmaxTest } from './types';
 
 const App: React.FC = () => {
-  console.log("App Component Rendering...");
   const [user, setUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<View>('LOGIN');
   const [entries, setEntries] = useState<WellnessEntry[]>([]);
@@ -257,6 +257,7 @@ const App: React.FC = () => {
   if (isBooting) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
        <div className="flex flex-col items-center gap-6">
+         <Logo size="lg" className="animate-pulse" />
          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing Protocols...</p>
        </div>
@@ -267,7 +268,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center px-6 pt-24 pb-12 overflow-y-auto">
         <div className="w-full max-w-[400px] text-center space-y-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100 mb-6">P</div>
+          <Logo size="xl" className="justify-center mb-8" />
           <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-[1.1]">Where analog meets AI</h1>
           <p className="text-slate-500 font-medium text-lg leading-relaxed px-2">The intelligent readiness protocol for athletes and coaches.</p>
           
