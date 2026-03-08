@@ -45,6 +45,7 @@ export interface User {
   lastActiveAt?: string;
   hasWearable?: boolean;
   intelligencePacket?: IntelligencePacket;
+  createdAt?: string;
 }
 
 // Added WellnessEntry interface to track daily athlete status and internal load metrics
