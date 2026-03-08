@@ -111,7 +111,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
           <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${currentStatus.text} opacity-70`}>
             {regime.reason}
           </span>
-          <h2 className={`text-7xl font-black italic uppercase tracking-tighter leading-none ${currentStatus.text}`}>
+          <h2 className={`text-5xl sm:text-6xl md:text-7xl font-black italic uppercase tracking-tighter leading-none ${currentStatus.text} break-words px-4`}>
             {currentStatus.label}
           </h2>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.25em]">
