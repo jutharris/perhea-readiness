@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { storageService } from '../services/storageService';
+import Logo from './Logo';
 
 interface OnboardingProps {
   user: User;
@@ -12,6 +14,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
   const [firstName, setFirstName] = useState(user.firstName || '');
   const [lastName, setLastName] = useState(user.lastName || '');
   const [birthDate, setBirthDate] = useState('');
+  const [hasWearable, setHasWearable] = useState(true);
   const [loading, setLoading] = useState(false);
 
   // Sync if props update during mount
@@ -31,7 +34,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
     }
     setLoading(true);
     try {
-      const updatedUser = await storageService.initializeProfile(user.id, user.email, firstName, lastName, selectedRole, birthDate);
+      const updatedUser = await storageService.initializeProfile(user.id, user.email, firstName, lastName, selectedRole, birthDate, hasWearable);
       onComplete(updatedUser);
     } catch (err: any) {
       console.error("Initialization Failed:", err);
@@ -43,6 +46,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-10 animate-in fade-in zoom-in-95 duration-700">
+      <div className="flex justify-center mb-4">
+        <Logo size="lg" />
+      </div>
       <div className="text-center space-y-3">
         <h2 className="text-4xl font-black text-slate-900 tracking-tight">Identity Verification</h2>
         <p className="text-slate-500 font-medium">Define your role within the PerHea Performance Arena.</p>
@@ -119,6 +125,22 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
           />
           <p className="text-[10px] text-slate-400 italic ml-2">Used to calibrate heart rate zones and submax protocols.</p>
         </div>
+
+        {selectedRole === 'ATHLETE' && (
+          <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:border-indigo-100">
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-900">Wearable Device Integration</p>
+              <p className="text-[10px] text-slate-400 font-medium">Do you use a Garmin, Apple Watch, Oura, or similar device?</p>
+            </div>
+            <button 
+              type="button"
+              onClick={() => setHasWearable(!hasWearable)}
+              className={`w-12 h-6 rounded-full transition-all relative ${hasWearable ? 'bg-indigo-600' : 'bg-slate-200'}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${hasWearable ? 'left-7' : 'left-1'}`}></div>
+            </button>
+          </div>
+        )}
       </div>
 
       <button 
