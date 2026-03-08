@@ -11,23 +11,23 @@ interface Concept {
 
 const CONCEPTS: Concept[] = [
   {
-    header: "Your Watch Is Lying To You. Not On Purpose.",
-    body: "Your Garmin, WHOOP, or Apple Watch is a remarkable piece of engineering. It measures your pulse, estimates your HRV, and tells you whether to train or rest.\n\nThere's one problem. It has no idea how you feel.\n\nPeer-reviewed sports science has known this for decades: the most accurate predictor of athletic breakdown isn't heart rate variability — it's perceived exertion, mood, stress, and sleep quality, reported by you. These are signals your watch's optical sensor physically cannot detect.\n\nThe result? Thousands of athletes every year train into injury because their watch said 'green' while their body was screaming 'red.' We call this a Divergence. Learning to spot yours is why you're here.",
+    header: "Your Wearable Optical Sensor Is Gaslighting You.",
+    body: "Your optical sensor is a remarkable piece of engineering, but it is fundamentally limited. These devices rely on Photoplethysmography (PPG)—using light to measure blood flow.\n\nThe reality? Peer-reviewed research shows that wrist-based sensors can have error rates exceeding 20% during high-intensity movement due to 'motion artifacts.' Even worse, studies have shown energy expenditure (calorie) estimates can be off by as much as 40-80% depending on the activity.\n\nThey poorly measure objectivity; they cannot measure the human. When your sensor says 'Green' but your body is screaming 'Red,' that is a Divergence. Learning to spot when you're being gaslit by your hardware is why you're here.",
     icon: <Info className="w-8 h-8 text-indigo-400" />,
   },
   {
-    header: "You Are Not The Average Athlete. Stop Being Measured Like One.",
-    body: "Every wearable on the market compares you to a population average. Their algorithms were built on other people's data.\n\nElite sports programs don't work that way. They build readiness models around the individual athlete — because a '7/10 soreness' means something completely different for you than it does for the person next to you at the start line.\n\nPerHea doesn't have a population. It has you. The next 7 days build a baseline that belongs entirely to your biology.",
+    header: "Stop Being Measured Against the Average.",
+    body: "Many wearables on the market compare you to a population average. Their algorithms were built on 'big data' from other people.\n\nElite performance and enhanced health doesn't work that way. We build readiness models around your individual patterns—because a '7/10 soreness' means something completely different for you than it does for the person next to you.\n\nPerHea doesn't care about the population. It cares about you. The next 7 days build a baseline that belongs entirely to your unique biology.",
     icon: <Zap className="w-8 h-8 text-amber-400" />,
   },
   {
-    header: "Forget Wellness Scores. You Have A Turbulence Rating.",
-    body: "Most apps give you a number. 74% recovered. 8.2 sleep score. These numbers feel precise. They aren't.\n\nPerHea gives you a Turbulence state — a readiness classification built from the pattern of your inputs, not a single metric.\n\nThink of it like a pilot reading weather. A single instrument doesn't determine whether to fly. The full picture does — wind, visibility, pressure, the pilot's own judgment.\n\nYour Turbulence state synthesizes Energy, Stress, Sleep, and Soreness into one honest signal: Adapt, Build, or Restoration. Not a score. A command.",
+    header: "The Turbulence Engine: Correlation and Volatility.",
+    body: "Most apps give you a single wellness score or a flat recovery score. We look at the 'Weather' of your biology.\n\nWe analyze Correlation: how your metrics move together. If your stress spikes while your energy drops, that’s a chaotic signal. We also measure Volatility: how much your system is swinging day-to-day.\n\nThink of it like a pilot reading weather. A single instrument or metric doesn't determine whether to fly; the relationship between wind, pressure, and visibility does. Your Turbulence state synthesizes these into one of four honest commands: Build, Adapt, Restoration, or Caution.",
     icon: <Wind className="w-8 h-8 text-emerald-400" />,
   },
   {
-    header: "In 7 Days, The System Will Know Something About You That No Wearable Ever Will.",
-    body: "A Bio Law is a personalized readiness rule written entirely from your own data.\n\nExample: 'When Athlete A reports high soreness for 3 consecutive days alongside elevated stress, their RPE runs 2 points above plan regardless of HRV.' That's not an algorithm. That's your biology, codified.\n\nMost athletes spend entire careers never knowing their own patterns this precisely. Your first Bio Law reveals after your 7th entry. The baseline starts now.",
+    header: "The Pattern Library: Depth That Evolves With You.",
+    body: "We don't believe in 'Laws' set in stone. We believe in Depth.\n\nThe system is constantly running a multi-layered analysis of your history. We look at Acute Snapshots (your last few days), Short-Term Cycles (your last two weeks), Seasonal Shifts (your last month), and Long-Term Biological Trends (your multi-month trajectory).\n\nBy cross-referencing these different time horizons simultaneously, we'll find subtle, individual patterns that no wearable ever will. The longer you stay, the deeper the library grows. The baseline starts now.",
     icon: <ShieldCheck className="w-8 h-8 text-indigo-400" />,
   }
 ];
