@@ -39,7 +39,7 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = fal
       <img 
         src="/logo-social.png" 
         alt="PerHea" 
-        className={`${sizeClasses[size]} w-auto object-contain`}
+        className={`${sizeClasses[size]} w-auto object-contain transition-all duration-500 ${inverted ? 'invert brightness-200 contrast-200 mix-blend-screen' : ''}`}
         onError={() => setHasError(true)}
       />
     </div>
