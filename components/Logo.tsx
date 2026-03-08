@@ -7,7 +7,16 @@ interface LogoProps {
 }
 
 const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = false }) => {
+  const [hasError, setHasError] = React.useState(false);
+
   const sizeClasses = {
+    sm: 'h-6',
+    md: 'h-8',
+    lg: 'h-12',
+    xl: 'h-20',
+  };
+
+  const textFallbackClasses = {
     sm: 'text-xl',
     md: 'text-2xl',
     lg: 'text-4xl',
@@ -16,22 +25,22 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = fal
 
   const color = inverted ? 'text-white' : 'text-[#0A2E52]';
 
+  if (hasError) {
+    return (
+      <div className={`flex items-center font-black tracking-tighter ${textFallbackClasses[size]} ${className}`}>
+        <span className={color}>Per</span>
+        <span className="text-[#00C4A7]">Hea</span>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-center ${className}`}>
       <img 
         src="/logo-social.png" 
         alt="PerHea" 
-        className={`${sizeClasses[size]} h-auto object-contain`}
-        onError={(e) => {
-          // Fallback to CSS logo if PNG is missing
-          e.currentTarget.style.display = 'none';
-          e.currentTarget.parentElement!.innerHTML = `
-            <div class="flex items-center font-black tracking-tighter ${sizeClasses[size]}">
-              <span class="${color}">Per</span>
-              <span class="text-[#00C4A7]">Hea</span>
-            </div>
-          `;
-        }}
+        className={`${sizeClasses[size]} w-auto object-contain`}
+        onError={() => setHasError(true)}
       />
     </div>
   );
