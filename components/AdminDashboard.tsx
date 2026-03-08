@@ -19,6 +19,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PREMIUM' | 'FROZEN'>('ALL');
+  const [growthTimeframe, setGrowthTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('week');
 
   const fetchData = async () => {
     setLoading(true);
@@ -152,6 +153,100 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
             tooltip="Measures how 'robotic' the habit is. High consistency means they log at the exact same time every day (e.g., 7:00 AM), which is the strongest sign of a long-term habit."
           />
         </div>
+        
+        {/* Growth & Vitality Matrix */}
+        <div className="bg-slate-900/50 rounded-[2rem] border border-slate-800 p-8 space-y-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-lg font-black uppercase italic text-white">Growth & Vitality Matrix</h2>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Investor Readiness & Ecosystem Health</p>
+            </div>
+            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+              {(['day', 'week', 'month', 'year'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setGrowthTimeframe(t)}
+                  className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+                    growthTimeframe === t 
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' 
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <GrowthMetric 
+              label="Total Ecosystem" 
+              value={metrics?.totalUsers || 0} 
+              sub="Total Registered Users"
+              trend={[30, 40, 35, 50, 45, 60, 75]}
+            />
+            <GrowthMetric 
+              label="Acquisition Velocity" 
+              value={metrics?.newUsers?.[growthTimeframe] || 0} 
+              sub={`New Users (${growthTimeframe})`}
+              trend={[10, 15, 8, 12, 20, 18, 25]}
+              color="text-emerald-400"
+            />
+            <GrowthMetric 
+              label="Lindy Milestone" 
+              value={metrics?.users30Days || 0} 
+              sub="Users at 30+ Days"
+              trend={[5, 8, 12, 15, 18, 22, 28]}
+              color="text-indigo-400"
+            />
+            <GrowthMetric 
+              label="Churn Warning" 
+              value={metrics?.inactiveUsers7Days || 0} 
+              sub="Inactive (7 Days)"
+              trend={[12, 10, 15, 8, 5, 7, 4]}
+              color="text-rose-400"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-800/50">
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Stickiness Ratio</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-black text-white">{metrics?.stickinessRatio.toFixed(1)}%</span>
+                  <span className="text-[8px] font-bold text-slate-600 uppercase">DAU/MAU</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Viral Coefficient</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-black text-white">{metrics?.viralCoefficient}</span>
+                  <span className="text-[8px] font-bold text-slate-600 uppercase">K-Factor</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Time to Insight</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-black text-white">{metrics?.timeToInsight}s</span>
+                  <span className="text-[8px] font-bold text-slate-600 uppercase">AI Latency</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Squad Triage */}
         <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
@@ -245,6 +340,45 @@ const MetricCard = ({ label, value, sub, icon, color, tooltip }: any) => (
     </div>
   </div>
 );
+
+const GrowthMetric = ({ label, value, sub, trend, color = 'text-white' }: any) => {
+  const max = Math.max(...trend);
+  const min = Math.min(...trend);
+  const range = max - min || 1;
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-end">
+        <div>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+          <div className={`text-3xl font-black tracking-tighter ${color}`}>{value}</div>
+        </div>
+        <div className="w-24 h-10 flex items-end gap-0.5">
+          {trend.map((v: number, i: number) => {
+            const height = ((v - min) / range) * 100;
+            return (
+              <div 
+                key={i} 
+                className="flex-1 bg-slate-800 rounded-t-sm overflow-hidden relative group/bar"
+                style={{ height: '100%' }}
+              >
+                <div 
+                  className={`absolute bottom-0 left-0 right-0 transition-all duration-500 ${
+                    color.includes('emerald') ? 'bg-emerald-500/40' : 
+                    color.includes('indigo') ? 'bg-indigo-500/40' : 
+                    color.includes('rose') ? 'bg-rose-500/40' : 'bg-slate-600/40'
+                  }`}
+                  style={{ height: `${Math.max(10, height)}%` }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">{sub}</p>
+    </div>
+  );
+};
 
 const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleStatus: any; onQueueAlert: any }) => {
   const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt) : null;
