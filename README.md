@@ -6,6 +6,8 @@
 
 **PerHea Readiness** is an elite athlete performance monitoring platform that bridges the gap between raw biological data and actionable coaching intelligence. Built on the proven **Hooper-Mackinnon** sports science model and powered by **Gemini 3.1 Pro AI**, PerHea transforms subjective wellness markers into a definitive "Regime" for daily training.
 
+**The intersection of performance and health.**
+
 ---
 
 ## 💎 The Investor's Vision: Scalable Human Performance
