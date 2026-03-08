@@ -1,0 +1,6 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="400" fill="white"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-weight="900" font-size="240" letter-spacing="-12">
+    <tspan fill="#0A2E52">Per</tspan><tspan fill="#00C4A7">Hea</tspan>
+  </text>
+</svg>
