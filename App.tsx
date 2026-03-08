@@ -39,23 +39,47 @@ const App: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [auditProcessingStep, setAuditProcessingStep] = useState<'LOADING' | 'COMPARING' | null>(null);
 
-  const getAthleteDay = (date: Date) => {
-    const d = new Date(date);
-    if (d.getHours() < 2) {
-      d.setDate(d.getDate() - 1);
+  const getAthleteDay = useCallback((date: Date, timezone: string = 'UTC') => {
+    // Convert the date to the user's timezone
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    };
+    
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(date);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+    
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const hour = parseInt(getPart('hour'));
+
+    // If it's before 3 AM in the user's timezone, count it as the previous day
+    // This handles the "reset while sleeping" requirement
+    if (hour < 3) {
+      const prevDate = new Date(date);
+      prevDate.setDate(prevDate.getDate() - 1);
+      return getAthleteDay(prevDate, timezone);
     }
-    return d.toISOString().split('T')[0];
-  };
+
+    return `${year}-${month}-${day}`;
+  }, []);
 
   const hasSubmittedToday = useMemo(() => {
     if (user?.role !== 'ATHLETE') return true;
-    const today = getAthleteDay(new Date());
-    // Normalize entry date to athlete day for comparison
+    const tz = user.timezone || 'UTC';
+    const today = getAthleteDay(new Date(), tz);
+    
     return entries.some(e => {
       const entryDate = new Date(e.isoDate);
-      return getAthleteDay(entryDate) === today;
+      return getAthleteDay(entryDate, tz) === today;
     });
-  }, [entries, user]);
+  }, [entries, user, getAthleteDay]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
