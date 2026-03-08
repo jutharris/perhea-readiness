@@ -44,6 +44,7 @@ export interface User {
   queuedAlert?: string | null;
   lastActiveAt?: string;
   hasWearable?: boolean;
+  timezone?: string;
   intelligencePacket?: IntelligencePacket;
   createdAt?: string;
 }
