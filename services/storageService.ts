@@ -294,7 +294,8 @@ export const storageService = {
       isPremium: !!d.is_premium,
       isFrozen: !!d.is_frozen,
       queuedAlert: d.queued_alert,
-      lastActiveAt: d.last_active_at
+      lastActiveAt: d.last_active_at,
+      createdAt: d.created_at
     }));
   },
 
@@ -364,14 +365,59 @@ export const storageService = {
     const aiInsightROI = 45; // Placeholder
 
     // 4. Submission Consistency
-    // Calculate avg time of day for submissions and its std dev
     const submissionConsistency = 85; // Placeholder
+
+    // 5. Growth & Vitality Metrics
+    const totalUsers = allUsers.length;
+    
+    const getNewUsersCount = (days: number) => {
+      const cutoff = new Date();
+      cutoff.setDate(now.getDate() - days);
+      return allUsers.filter(u => u.createdAt && new Date(u.createdAt) >= cutoff).length;
+    };
+
+    const newUsers = {
+      day: getNewUsersCount(1),
+      week: getNewUsersCount(7),
+      month: getNewUsersCount(30),
+      year: getNewUsersCount(365)
+    };
+
+    const users30Days = allUsers.filter(u => {
+      if (!u.createdAt) return false;
+      const created = new Date(u.createdAt);
+      const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays >= 30;
+    }).length;
+
+    const inactiveUsers7Days = athletes.filter(u => {
+      if (!u.lastActiveAt) return true;
+      return new Date(u.lastActiveAt) < sevenDaysAgo;
+    }).length;
+
+    // Stickiness Ratio (DAU/MAU)
+    // Placeholder: DAU = active in last 1 day, MAU = active in last 30 days
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(now.getDate() - 1);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+    
+    const dau = athletes.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= oneDayAgo).length;
+    const mau = athletes.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= thirtyDaysAgo).length;
+    const stickinessRatio = mau > 0 ? (dau / mau) * 100 : 0;
 
     return {
       day7ReturnRate,
       frictionIndex,
       aiInsightROI,
-      submissionConsistency
+      submissionConsistency,
+      totalUsers,
+      newUsers,
+      users30Days,
+      inactiveUsers7Days,
+      stickinessRatio,
+      viralCoefficient: 1.2, // Placeholder
+      timeToInsight: 4.2 // Placeholder (seconds)
     };
   },
 
