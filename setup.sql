@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   is_frozen BOOLEAN DEFAULT false,
   has_wearable BOOLEAN DEFAULT true,
   queued_alert TEXT,
-  intelligence_packet TEXT,
+  intelligence_packet JSONB,
+  timezone TEXT DEFAULT 'UTC',
   last_active_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now()
 );
