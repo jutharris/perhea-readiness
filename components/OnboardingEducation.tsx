@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Info, Zap, Wind, ShieldCheck } from 'lucide-react';
-import Logo from './Logo';
 
 interface Concept {
   header: string;
@@ -82,23 +81,17 @@ const OnboardingEducation: React.FC<{ onComplete: () => void }> = ({ onComplete 
   return (
     <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col">
       {/* Progress Bars - Fixed at top */}
-      <div className="flex flex-col gap-4 px-4 pt-6 pb-4 bg-slate-950/80 backdrop-blur-md z-10">
-        <div className="flex justify-between items-center px-2">
-          <Logo size="sm" inverted />
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Education Phase</div>
-        </div>
-        <div className="flex gap-1">
-          {CONCEPTS.map((_, idx) => (
-            <div key={idx} className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: idx <= currentStep ? '100%' : '0%' }}
-                transition={{ duration: 0.5 }}
-                className={`h-full ${idx === currentStep ? 'bg-indigo-500' : 'bg-slate-600'}`}
-              />
-            </div>
-          ))}
-        </div>
+      <div className="flex gap-1 px-4 pt-6 pb-4 bg-slate-950/80 backdrop-blur-md z-10">
+        {CONCEPTS.map((_, idx) => (
+          <div key={idx} className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: idx <= currentStep ? '100%' : '0%' }}
+              transition={{ duration: 0.5 }}
+              className={`h-full ${idx === currentStep ? 'bg-indigo-500' : 'bg-slate-600'}`}
+            />
+          </div>
+        ))}
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 pt-8 pb-12 flex flex-col">
