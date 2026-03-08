@@ -117,10 +117,10 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, c
     return response.text || "Metrics are within your adaptive range.";
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    // If it's a 404 or model not found, try a fallback model
+    // Fallback to gemini-3-flash-preview without thinking config if it failed
     try {
       const fallbackResponse = await ai.models.generateContent({
-        model: "gemini-1.5-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: { systemInstruction }
       });
@@ -203,10 +203,10 @@ export const getAthleteInteraction = async (
     return response.text || JSON.stringify({ text: "I'm processing your data. Please try again." });
   } catch (error) {
     console.error("Gemini Interaction Error:", error);
-    // Fallback to 1.5 flash if 3.0 fails
+    // Fallback to gemini-3-flash-preview without thinking config
     try {
       const fallbackResponse = await ai.models.generateContent({
-        model: "gemini-1.5-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });
@@ -270,7 +270,7 @@ export const getDeepAudit = async (entries: WellnessEntry[]): Promise<Intelligen
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-3.1-pro-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -288,7 +288,24 @@ export const getDeepAudit = async (entries: WellnessEntry[]): Promise<Intelligen
     };
   } catch (error) {
     console.error("Deep Audit Error:", error);
-    throw error;
+    // Fallback to flash if pro fails
+    try {
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      const result = JSON.parse(fallbackResponse.text || "{}");
+      return {
+        laws: result.laws.map((l: any) => ({
+          ...l,
+          lastUpdated: new Date().toISOString()
+        })),
+        lastDeepAudit: new Date().toISOString()
+      };
+    } catch (innerError) {
+      throw error;
+    }
   }
 };
 
@@ -314,12 +331,21 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-pro-preview", 
+      model: "gemini-3.1-pro-preview", 
       contents: prompt 
     });
     return response.text || "Squad adaptation is stable across all primary vectors.";
   } catch (error) {
     console.error("Gemini Briefing Error:", error);
-    return "Manual review of individual turbulence flags recommended.";
+    // Fallback to flash
+    try {
+      const fallbackResponse = await ai.models.generateContent({ 
+        model: "gemini-3-flash-preview", 
+        contents: prompt 
+      });
+      return fallbackResponse.text || "Squad adaptation is stable across all primary vectors.";
+    } catch (innerError) {
+      return "Manual review of individual turbulence flags recommended.";
+    }
   }
 };
