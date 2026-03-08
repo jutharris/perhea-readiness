@@ -124,8 +124,10 @@ const Sparkline: React.FC<{
 };
 
 const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet }) => {
-  if (!packet) return null;
+  if (!packet || !packet.laws) return null;
   
+  const sortedLaws = [...packet.laws].sort((a, b) => a.horizon - b.horizon);
+
   return (
     <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
       <div className="flex items-center gap-2">
@@ -134,7 +136,7 @@ const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet 
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {packet.laws.sort((a,b) => a.horizon - b.horizon).map(law => (
+        {sortedLaws.map(law => (
           <div key={law.horizon} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{law.horizon}-Day {law.horizon === 50 ? 'Identity' : law.horizon === 28 ? 'Signature' : law.horizon === 14 ? 'Adaptation' : 'Vibe'}</span>
@@ -153,14 +155,16 @@ const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet 
         ))}
       </div>
       
-      <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
-        Last Deep Audit: {new Date(packet.lastDeepAudit).toLocaleDateString()}
-      </p>
+      {packet.lastDeepAudit && (
+        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
+          Last Deep Audit: {new Date(packet.lastDeepAudit).toLocaleDateString()}
+        </p>
+      )}
     </div>
   );
 };
 
-const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
+const Trends: React.FC<TrendsProps> = ({ entries = [], user }) => {
   const [inflectionPoint, setInflectionPoint] = useState<{ metric: string; date: string } | null>(null);
 
   useEffect(() => {
@@ -181,7 +185,7 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
   }, []);
 
   const { wellnessData, srpeData, stats } = useMemo(() => {
-    if (entries.length === 0) return { wellnessData: [], srpeData: [], stats: [] };
+    if (!entries || entries.length === 0) return { wellnessData: [], srpeData: [], stats: [] };
     
     const sortedEntries = [...entries].reverse();
     const last14 = sortedEntries.slice(-14);
@@ -212,6 +216,20 @@ const Trends: React.FC<TrendsProps> = ({ entries, user }) => {
     
     return { wellnessData: wellness, srpeData: srpe, stats: metricStats };
   }, [entries, user.personalityCalibration]);
+
+  if (!entries || entries.length === 0) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 text-center px-6">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">System Calibrating</h2>
+          <p className="text-sm font-medium text-slate-500 max-w-xs">We need at least one audit entry to generate your 14-day system trajectory.</p>
+        </div>
+      </div>
+    );
+  }
 
   const wellnessMetrics = [
     { key: 'sleepQuality', label: 'Sleep Quality' },
