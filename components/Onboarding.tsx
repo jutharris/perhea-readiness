@@ -14,6 +14,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
   const [firstName, setFirstName] = useState(user.firstName || '');
   const [lastName, setLastName] = useState(user.lastName || '');
   const [birthDate, setBirthDate] = useState('');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const [hasWearable, setHasWearable] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +35,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
     }
     setLoading(true);
     try {
-      const updatedUser = await storageService.initializeProfile(user.id, user.email, firstName, lastName, selectedRole, birthDate, hasWearable);
+      const updatedUser = await storageService.initializeProfile(user.id, user.email, firstName, lastName, selectedRole, birthDate, hasWearable, timezone);
       onComplete(updatedUser);
     } catch (err: any) {
       console.error("Initialization Failed:", err);
@@ -124,6 +125,20 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
             className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all" 
           />
           <p className="text-[10px] text-slate-400 italic ml-2">Used to calibrate heart rate zones and submax protocols.</p>
+        </div>
+
+        <div className="space-y-2 pt-4">
+          <label className="text-[10px] font-black text-slate-300 uppercase ml-2 tracking-tighter">Timezone</label>
+          <select 
+            value={timezone}
+            onChange={e => setTimezone(e.target.value)}
+            className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 font-bold text-slate-900 transition-all appearance-none"
+          >
+            {Intl.supportedValuesOf('timeZone').map(tz => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-slate-400 italic ml-2">Ensures your daily reset happens while you sleep.</p>
         </div>
 
         {selectedRole === 'ATHLETE' && (
