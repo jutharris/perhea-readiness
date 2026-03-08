@@ -25,7 +25,9 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = fal
 
   const color = inverted ? 'text-white' : 'text-[#0A2E52]';
 
-  if (hasError) {
+  // For inverted (dark background) or error states, use CSS rendering
+  // This ensures "Per" is white and "Hea" stays turquoise without the "white box" PNG issue
+  if (inverted || hasError) {
     return (
       <div className={`flex items-center font-black tracking-tighter ${textFallbackClasses[size]} ${className}`}>
         <span className={color}>Per</span>
@@ -39,7 +41,7 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = fal
       <img 
         src="/logo-social.png" 
         alt="PerHea" 
-        className={`${sizeClasses[size]} w-auto object-contain transition-all duration-500 ${inverted ? 'invert brightness-200 contrast-200 mix-blend-screen' : ''}`}
+        className={`${sizeClasses[size]} w-auto object-contain`}
         onError={() => setHasError(true)}
       />
     </div>
