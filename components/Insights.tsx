@@ -20,48 +20,61 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
   const entriesCount = entries.length;
 
   useEffect(() => {
-    if (entriesCount > 0 && !interactionLoading) {
-      const latestId = latestEntryId;
-      
-      // Get or create a session ID that persists only for the current browser session
-      let sessionId = sessionStorage.getItem('ai_session_id');
-      if (!sessionId) {
-        sessionId = Math.random().toString(36).substring(7);
-        sessionStorage.setItem('ai_session_id', sessionId);
+    const fetchAnalysis = async () => {
+      if (entriesCount > 0 && !interactionLoading) {
+        const latestId = latestEntryId;
+        
+        // Get or create a session ID that persists only for the current browser session
+        let sessionId = sessionStorage.getItem('ai_session_id');
+        if (!sessionId) {
+          sessionId = Math.random().toString(36).substring(7);
+          sessionStorage.setItem('ai_session_id', sessionId);
+        }
+        
+        // Create a unique cache key based on the latest entry, user role, personality, and session
+        const cacheKey = `ai_insight_${latestId}_${role}_${personalityCalibration}_${sessionId}`;
+        const cached = localStorage.getItem(cacheKey);
+
+        if (cached) {
+          setAnalysis(cached);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+
+        const personalityDirectives = {
+          STOIC: "This athlete is STOIC. They under-report pain and fatigue. If they report any dip at all, prioritize it as a significant physiological event. Be highly sensitive to small changes.",
+          BALANCED: "This athlete is BALANCED. Their reporting is generally reliable and proportional to their state.",
+          EXPRESSIVE: "This athlete is EXPRESSIVE. They report based on current mood and 'vibes', which can be volatile. Filter for the signal within the noise; do not overreact to single-day swings."
+        }[personalityCalibration] || "";
+
+        const systemInstruction = `You are an AI Assistant Coach for a high-performance athlete. 
+        Your tone is supportive, calm, and educational. 
+        ${personalityDirectives}
+        Do not be overly reactive to single-day dips unless the personality calibration suggests otherwise. 
+        Focus on long-term trends and provide physiological context without being overly technical or prescriptive.
+        Keep your response concise (2-3 sentences).
+        Avoid definitive medical judgments.`;
+
+        try {
+          const res = await getAthleteAnalysis(entries, user, systemInstruction);
+          if (res) {
+            setAnalysis(res);
+            localStorage.setItem(cacheKey, res);
+          } else {
+            setAnalysis("Maintaining stable protocol based on current metrics.");
+          }
+        } catch (err) {
+          console.error("AI Analysis Error:", err);
+          setAnalysis("Maintaining stable protocol based on current metrics.");
+        } finally {
+          setLoading(false);
+        }
       }
-      
-      // Create a unique cache key based on the latest entry, user role, personality, and session
-      const cacheKey = `ai_insight_${latestId}_${role}_${personalityCalibration}_${sessionId}`;
-      const cached = localStorage.getItem(cacheKey);
+    };
 
-      if (cached) {
-        setAnalysis(cached);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-
-      const personalityDirectives = {
-        STOIC: "This athlete is STOIC. They under-report pain and fatigue. If they report any dip at all, prioritize it as a significant physiological event. Be highly sensitive to small changes.",
-        BALANCED: "This athlete is BALANCED. Their reporting is generally reliable and proportional to their state.",
-        EXPRESSIVE: "This athlete is EXPRESSIVE. They report based on current mood and 'vibes', which can be volatile. Filter for the signal within the noise; do not overreact to single-day swings."
-      }[personalityCalibration] || "";
-
-      const systemInstruction = `You are an AI Assistant Coach for a high-performance athlete. 
-      Your tone is supportive, calm, and educational. 
-      ${personalityDirectives}
-      Do not be overly reactive to single-day dips unless the personality calibration suggests otherwise. 
-      Focus on long-term trends and provide physiological context without being overly technical or prescriptive.
-      Keep your response concise (2-3 sentences).
-      Avoid definitive medical judgments.`;
-
-      getAthleteAnalysis(entries, user, systemInstruction).then(res => {
-        setAnalysis(res);
-        localStorage.setItem(cacheKey, res);
-        setLoading(false);
-      });
-    }
+    fetchAnalysis();
   }, [latestEntryId, entriesCount, role, personalityCalibration, interactionLoading]);
 
   const handleInteraction = async (type: InteractionType | 'MESSAGE_COACH', message?: string) => {
