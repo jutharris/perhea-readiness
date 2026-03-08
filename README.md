@@ -1,10 +1,12 @@
 # PerHea Readiness: Where Analog Meets AI
 
+![PerHea Banner](https://placehold.co/1200x400/4f46e5/ffffff?text=PerHea+Readiness)
+
 **PerHea Readiness** is an elite athlete performance monitoring platform that bridges the gap between raw biological data and actionable coaching intelligence. Built on the proven **Hooper-Mackinnon** sports science model and powered by **Gemini 3.1 Pro AI**, PerHea transforms subjective wellness markers into a definitive "Regime" for daily training.
 
 ---
 
-## Scalable Human Performance
+## 💎 The Investor's Vision: Scalable Human Performance
 
 ### The Problem
 In the $50B+ sports tech market, coaches are drowning in data but starving for insight. Wearables provide "what" happened, but they fail to explain "why" or "what next." This gap leads to overtraining, injury, and suboptimal performance.
@@ -19,12 +21,12 @@ PerHea doesn't just look at heart rate; it looks at the *human*. By capturing th
 
 ---
 
-## Architecture & Intelligence
+## 🛠️ The CTO's Brief: Architecture & Intelligence
 
 PerHea is built for speed, data integrity, and deep reasoning.
 
 ### The Intelligence Stack
-- **Gemini 3.1 Pro reasoning:** We don't use LLMs for "chat." We use them as a **Reasoning Engine**. The AI analyzes 7, 14, 28, and 50-day trends, cross-references them with "Bio Laws," and outputs clinical coaching adjustments.
+- **Gemini 3.1 Pro reasoning:** We don't use LLMs for "chat." We use them as a **Reasoning Engine**. The AI analyzes 30-day trends, cross-references them with "Bio Laws," and outputs clinical coaching adjustments.
 - **Bio Laws (Intelligence Packet):** Every athlete has a persistent "Intelligence Packet" in Supabase. This is the AI's evolving memory of that athlete's unique biological response to stress.
 - **Global DNA (Soul Document):** System-wide coaching logic is stored in a `global_config` table, allowing for real-time, hot-swappable AI personalities and decision-making frameworks.
 
