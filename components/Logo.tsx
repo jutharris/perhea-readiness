@@ -10,17 +10,17 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'md', inverted = fal
   const [hasError, setHasError] = React.useState(false);
 
   const sizeClasses = {
-    sm: 'h-6',
-    md: 'h-8',
-    lg: 'h-12',
-    xl: 'h-20',
+    sm: 'h-10',
+    md: 'h-12',
+    lg: 'h-20',
+    xl: 'h-32',
   };
 
   const textFallbackClasses = {
-    sm: 'text-xl',
-    md: 'text-2xl',
-    lg: 'text-4xl',
-    xl: 'text-6xl',
+    sm: 'text-2xl',
+    md: 'text-3xl',
+    lg: 'text-5xl',
+    xl: 'text-7xl',
   };
 
   const color = inverted ? 'text-white' : 'text-[#0A2E52]';
