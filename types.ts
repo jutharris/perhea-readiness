@@ -82,6 +82,13 @@ export interface InteractionResponse {
 
 export type View = 'LOGIN' | 'ONBOARDING' | 'ONBOARDING_EDUCATION' | 'DASHBOARD' | 'TRENDS' | 'SUBMAX_LAB' | 'FORM' | 'COACH_DASHBOARD' | 'ATHLETE_DETAIL' | 'SUBMAX_TEST' | 'MOCKUPS' | 'ADMIN_DASHBOARD' | 'CREATOR_LAB';
 
+export interface SystemCalibration {
+  volatilityThreshold: number;
+  decouplingThreshold: number;
+  identityWeight: number;
+  systemicStressFloor: number;
+}
+
 export interface SubmaxTest {
   id: string;
   userId: string;
