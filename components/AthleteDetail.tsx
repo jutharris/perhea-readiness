@@ -550,29 +550,29 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">RPE</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-black text-slate-900">{t.data?.rpe.toFixed(1)}</span>
-                          {t.prev && <TrendIndicator current={t.data!.rpe} previous={t.prev.rpe} inverse />}
+                          <span className="text-xs font-black text-slate-900">{(t.data?.rpe || 0).toFixed(1)}</span>
+                          {t.prev && t.data && <TrendIndicator current={t.data.rpe} previous={t.prev.rpe} inverse />}
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Stress</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-black text-slate-900">{t.data?.stress.toFixed(1)}</span>
-                          {t.prev && <TrendIndicator current={t.data!.stress} previous={t.prev.stress} inverse />}
+                          <span className="text-xs font-black text-slate-900">{(t.data?.stress || 0).toFixed(1)}</span>
+                          {t.prev && t.data && <TrendIndicator current={t.data.stress} previous={t.prev.stress} inverse />}
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Sleep</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-black text-slate-900">{t.data?.sleep.toFixed(1)}</span>
-                          {t.prev && <TrendIndicator current={t.data!.sleep} previous={t.prev.sleep} />}
+                          <span className="text-xs font-black text-slate-900">{(t.data?.sleep || 0).toFixed(1)}</span>
+                          {t.prev && t.data && <TrendIndicator current={t.data.sleep} previous={t.prev.sleep} />}
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Energy</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-black text-slate-900">{t.data?.energy.toFixed(1)}</span>
-                          {t.prev && <TrendIndicator current={t.data!.energy} previous={t.prev.energy} />}
+                          <span className="text-xs font-black text-slate-900">{(t.data?.energy || 0).toFixed(1)}</span>
+                          {t.prev && t.data && <TrendIndicator current={t.data.energy} previous={t.prev.energy} />}
                         </div>
                       </div>
                     </div>
@@ -593,7 +593,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
             {stabilityIndex !== null && (
               <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
                 <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Stability Index</span>
-                <span className="text-sm font-black text-emerald-700">{stabilityIndex.toFixed(0)}%</span>
+                <span className="text-sm font-black text-emerald-700">{(stabilityIndex || 0).toFixed(0)}%</span>
               </div>
             )}
           </div>
