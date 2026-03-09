@@ -504,7 +504,7 @@ export const storageService = {
       .map(s => {
         const val = latest[s.key as keyof WellnessEntry] as number;
         if (s.stdDev === 0) return 0;
-        return (val - s.avg) / s.stdDev;
+        return (val - s.mean) / s.stdDev;
       });
     
     if (zScores.length === 0) return 0;
