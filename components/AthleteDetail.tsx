@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, SubmaxTest, TrainingFocus, PersonalityCalibration, Message } from '../types';
+import { User, SubmaxTest, TrainingFocus, PersonalityCalibration, Message, SystemCalibration } from '../types';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -117,7 +117,15 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [showChat, setShowChat] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [activeLines, setActiveLines] = useState(['rpe', 'stress']);
-  const [, setTrendWindow] = useState<7 | 14 | 28>(7);
+  const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const systemCalibration = await storageService.getSystemCalibration();
+      setCalibration(systemCalibration);
+    };
+    fetchData();
+  }, []);
 
   const trendData = useMemo(() => {
     const dataMap: Record<string, any> = {};
@@ -312,9 +320,9 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     const analysis = getTestAnalysis(tests[0], 0);
     if (analysis.change > -1.5) return null;
 
-    const correlations = storageService.calculateCorrelations(entries, 21);
+    const correlations = storageService.calculateCorrelations(entries, 21, calibration || undefined);
     return correlations;
-  }, [tests, entries]);
+  }, [tests, entries, calibration]);
 
   const comparisonData = useMemo(() => {
     if (!comparisonId) return null;
