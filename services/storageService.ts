@@ -464,6 +464,15 @@ export const storageService = {
   }
 },
 
+  getAdminNerveCenter: async () => {
+    const response = await fetch('/api/admin/nerve-center');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch Nerve Center data');
+    }
+    return response.json();
+  },
+
   calculateUserHabitScore: (entries: WellnessEntry[]) => {
     if (entries.length === 0) return 0;
     
