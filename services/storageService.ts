@@ -378,24 +378,26 @@ export const storageService = {
 
   getGlobalMetrics: async () => {
     checkConfig();
-    const allUsers = await storageService.getAllUsers();
-    const athletes = allUsers.filter(u => u.role === 'ATHLETE');
-    const entries = await storageService.getAllEntries();
+    try {
+      const allUsers = await storageService.getAllUsers();
+      const athletes = allUsers.filter(u => u.role === 'ATHLETE');
+      const entries = await storageService.getAllEntries();
 
-    const now = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
+      const now = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
 
-    // 1. Day-7 Return Rate
-    const activeInLast7 = athletes.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= sevenDaysAgo);
-    const day7ReturnRate = athletes.length > 0 ? (activeInLast7.length / athletes.length) * 100 : 0;
+      const athleteIds = new Set(athletes.map(a => a.id));
 
-    // 2. Friction Index (Form completion vs App open)
-    const entriesInLast7 = entries.filter(e => {
-      const isAthleteEntry = athletes.some(a => a.id === e.userId);
-      return isAthleteEntry && new Date(e.isoDate) >= sevenDaysAgo;
-    });
-    const frictionIndex = activeInLast7.length > 0 ? (entriesInLast7.length / (activeInLast7.length * 7)) * 100 : 0;
+      // 1. Day-7 Return Rate
+      const activeInLast7 = athletes.filter(u => u.lastActiveAt && new Date(u.lastActiveAt) >= sevenDaysAgo);
+      const day7ReturnRate = athletes.length > 0 ? (activeInLast7.length / athletes.length) * 100 : 0;
+
+      // 2. Friction Index (Form completion vs App open)
+      const entriesInLast7 = entries.filter(e => {
+        return athleteIds.has(e.userId) && new Date(e.isoDate) >= sevenDaysAgo;
+      });
+      const frictionIndex = activeInLast7.length > 0 ? (entriesInLast7.length / (activeInLast7.length * 7)) * 100 : 0;
 
     // 3. AI Insight ROI
     // Placeholder logic: % of entries that have comments or interactions
@@ -456,7 +458,11 @@ export const storageService = {
       viralCoefficient: 1.2, // Placeholder
       timeToInsight: 4.2 // Placeholder (seconds)
     };
-  },
+  } catch (err) {
+    console.error("Error calculating global metrics:", err);
+    throw err;
+  }
+},
 
   calculateUserHabitScore: (entries: WellnessEntry[]) => {
     if (entries.length === 0) return 0;
