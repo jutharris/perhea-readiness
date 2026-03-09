@@ -96,10 +96,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
     return matchesSearch && matchesStatus;
   });
 
-  if (loading && !metrics) {
+  if (loading || !metrics) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-950">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+          <p className="text-slate-500 text-xs font-black uppercase tracking-widest animate-pulse">Syncing Nerve Center...</p>
+        </div>
       </div>
     );
   }
@@ -144,7 +147,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard 
             label="Day-7 Return Rate" 
-            value={`${metrics?.day7ReturnRate.toFixed(1)}%`} 
+            value={`${(metrics?.day7ReturnRate || 0).toFixed(1)}%`} 
             sub="Retention North Star"
             icon={<Users className="w-5 h-5 text-indigo-400" />}
             color="bg-indigo-500/10"
@@ -152,7 +155,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
           />
           <MetricCard 
             label="Friction Index" 
-            value={`${metrics?.frictionIndex.toFixed(1)}%`} 
+            value={`${(metrics?.frictionIndex || 0).toFixed(1)}%`} 
             sub="Completion vs Open"
             icon={<Zap className="w-5 h-5 text-amber-400" />}
             color="bg-amber-500/10"
@@ -312,7 +315,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Stickiness Ratio</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-black text-white">{metrics?.stickinessRatio.toFixed(1)}%</span>
+                  <span className="text-xl font-black text-white">{(metrics?.stickinessRatio || 0).toFixed(1)}%</span>
                   <span className="text-[8px] font-bold text-slate-600 uppercase">DAU/MAU</span>
                 </div>
               </div>
