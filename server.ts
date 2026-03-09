@@ -7,9 +7,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Supabase initialization
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+console.log("Environment Keys:", Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('API')));
 console.log("Supabase Config Check:", { 
   hasUrl: !!supabaseUrl, 
   hasKey: !!supabaseAnonKey,
@@ -45,26 +46,54 @@ async function startServer() {
 
   app.get("/api/admin/nerve-center", async (req, res) => {
     console.log("Nerve Center API hit");
-    if (!supabase) {
+    
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ')[1];
+
+    // Create a request-specific Supabase client using the user's token
+    // This ensures RLS policies are correctly applied based on the user's role
+    const userSupabase = (supabaseUrl && supabaseAnonKey && token)
+      ? createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: `Bearer ${token}` } }
+        })
+      : supabase;
+
+    if (!userSupabase) {
       console.error("Nerve Center Error: Supabase not initialized");
-      return res.status(500).json({ error: "Supabase not configured on server" });
+      return res.status(500).json({ 
+        error: "Supabase not configured on server",
+        details: {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseAnonKey,
+          hasToken: !!token
+        }
+      });
     }
 
     try {
+      const { data: { user } } = await userSupabase.auth.getUser();
+      console.log("Authenticated User:", user?.email, user?.id);
+
       const now = new Date();
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(now.getDate() - 30);
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(now.getDate() - 7);
 
-      console.log("Fetching from Supabase...");
+      console.log("Fetching from Supabase with user context...");
       const [usersRes, entriesRes] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        supabase.from('wellness_entries').select('*').gte('created_at', thirtyDaysAgo.toISOString())
+        userSupabase.from('profiles').select('*'),
+        userSupabase.from('wellness_entries').select('*').gte('created_at', thirtyDaysAgo.toISOString())
       ]);
 
-      if (usersRes.error) throw usersRes.error;
-      if (entriesRes.error) throw entriesRes.error;
+      if (usersRes.error) {
+        console.error("Supabase Profiles Error:", usersRes.error);
+        return res.status(500).json({ error: "Supabase Profiles Error", details: usersRes.error });
+      }
+      if (entriesRes.error) {
+        console.error("Supabase Entries Error:", entriesRes.error);
+        return res.status(500).json({ error: "Supabase Entries Error", details: entriesRes.error });
+      }
 
       const allUsers = usersRes.data || [];
       const entries = entriesRes.data || [];
