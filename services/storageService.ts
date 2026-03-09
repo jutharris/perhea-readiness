@@ -467,8 +467,15 @@ export const storageService = {
   getAdminNerveCenter: async () => {
     const response = await fetch('/api/admin/nerve-center');
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to fetch Nerve Center data');
+      const text = await response.text();
+      let errorMsg = 'Failed to fetch Nerve Center data';
+      try {
+        const error = JSON.parse(text);
+        errorMsg = error.error || errorMsg;
+      } catch {
+        errorMsg = `Server error (${response.status}): ${text.substring(0, 100)}`;
+      }
+      throw new Error(errorMsg);
     }
     return response.json();
   },
