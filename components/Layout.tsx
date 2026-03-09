@@ -46,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, user, on
             </>
           ) : (
             <>
-              <button onClick={() => setView('DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>READY</button>
+              <button onClick={() => setView('DASHBOARD')} className={`text-xs font-black transition-colors ${activeView === 'DASHBOARD' ? 'text-indigo-400' : 'text-slate-400'}`}>BRIEF</button>
               <button onClick={() => setView('TRENDS')} className={`text-xs font-black transition-colors ${activeView === 'TRENDS' ? 'text-indigo-400' : 'text-slate-400'}`}>TRENDS</button>
               <button onClick={() => setView('SUBMAX_LAB')} className={`text-xs font-black transition-colors ${activeView === 'SUBMAX_LAB' ? 'text-indigo-400' : 'text-slate-400'}`}>LAB</button>
             </>
