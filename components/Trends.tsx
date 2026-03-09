@@ -5,7 +5,7 @@ import { storageService } from '../services/storageService';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Cell,
-  ComposedChart, Line, ReferenceArea, Bar
+  ComposedChart, Line, ReferenceArea, Bar, Area
 } from 'recharts';
 
 interface TrendsProps {
