@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, SystemCalibration } from '../types';
 import { storageService } from '../services/storageService';
 import { 
   Activity, Users, Zap, Shield, 
   AlertCircle, Clock, Watch,
-  Search, ArrowLeft, RefreshCw
+  Search, ArrowLeft, RefreshCw,
+  Settings, Save
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -16,7 +17,9 @@ interface AdminDashboardProps {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLab }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
+  const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingCalibration, setSavingCalibration] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PREMIUM' | 'FROZEN'>('ALL');
   const [growthTimeframe, setGrowthTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('week');
@@ -24,12 +27,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [allUsers, globalMetrics] = await Promise.all([
+      const [allUsers, globalMetrics, systemCalibration] = await Promise.all([
         storageService.getAllUsers(),
-        storageService.getGlobalMetrics()
+        storageService.getGlobalMetrics(),
+        storageService.getSystemCalibration()
       ]);
       setUsers(allUsers);
       setMetrics(globalMetrics);
+      setCalibration(systemCalibration);
     } catch (err) {
       console.error("Error fetching admin data:", err);
     } finally {
@@ -46,7 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
       setLoading(true);
       await storageService.updateUserStatus(userId, { [field]: !currentVal });
       await fetchData();
-    } catch (err) {
+    } catch {
       alert("Error updating status. Check RLS policies.");
     } finally {
       setLoading(false);
@@ -61,10 +66,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
       await storageService.updateUserStatus(userId, { queuedAlert: msg || "CNS Divergence Detected" });
       await fetchData();
       alert("Alert queued for next audit.");
-    } catch (err) {
+    } catch {
       alert("Error queueing alert. Check RLS policies.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateCalibration = async () => {
+    if (!calibration) return;
+    setSavingCalibration(true);
+    try {
+      await storageService.updateSystemCalibration(calibration);
+      alert("System calibration updated successfully.");
+    } catch (err) {
+      console.error("Error updating calibration:", err);
+      alert("Failed to update calibration.");
+    } finally {
+      setSavingCalibration(false);
     }
   };
 
@@ -152,6 +171,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
             color="bg-blue-500/10"
             tooltip="Measures how 'robotic' the habit is. High consistency means they log at the exact same time every day (e.g., 7:00 AM), which is the strongest sign of a long-term habit."
           />
+        </div>
+
+        {/* System Calibration Panel */}
+        <div className="bg-slate-900/50 rounded-[2rem] border border-slate-800 p-8 space-y-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-black uppercase italic text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-indigo-400" />
+                System Calibration
+              </h2>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Regime Engine Thresholds & Sensitivity</p>
+            </div>
+            <button
+              onClick={handleUpdateCalibration}
+              disabled={savingCalibration}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[10px] font-black rounded-xl uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/20"
+            >
+              <Save className="w-3 h-3" />
+              {savingCalibration ? 'Saving...' : 'Commit Changes'}
+            </button>
+          </div>
+
+          {calibration && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <CalibrationSlider
+                label="Volatility Sensitivity"
+                sub="Standard Deviation Threshold"
+                value={calibration.volatilityThreshold}
+                min={0.5}
+                max={3.0}
+                step={0.1}
+                onChange={(v) => setCalibration({ ...calibration, volatilityThreshold: v })}
+                tooltip="How much 'noise' (std dev) is allowed in a metric before it's flagged as VOLATILE. Lower = more sensitive."
+              />
+              <CalibrationSlider
+                label="Decoupling Sensitivity"
+                sub="Covariance Drift Threshold"
+                value={calibration.decouplingThreshold}
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                onChange={(v) => setCalibration({ ...calibration, decouplingThreshold: v })}
+                tooltip="The amount of drift required between two metrics to trigger a trend flag. Lower = more sensitive to decoupling."
+              />
+              <CalibrationSlider
+                label="Identity Weight"
+                sub="Long-term vs Short-term Bias"
+                value={calibration.identityWeight}
+                min={0.1}
+                max={0.9}
+                step={0.05}
+                onChange={(v) => setCalibration({ ...calibration, identityWeight: v })}
+                tooltip="Weight given to the 50-day 'Biological Law' vs. the 7-day 'Vibe'. Higher = more weight to long-term baseline."
+              />
+              <CalibrationSlider
+                label="Systemic Stress Floor"
+                sub="Restoration Trigger Point"
+                value={calibration.systemicStressFloor}
+                min={40}
+                max={80}
+                step={1}
+                onChange={(v) => setCalibration({ ...calibration, systemicStressFloor: v })}
+                unit="%"
+                tooltip="The aggregate wellness percentage that automatically triggers Restoration mode. Higher = more protective."
+              />
+            </div>
+          )}
         </div>
         
         {/* Growth & Vitality Matrix */}
@@ -379,6 +465,37 @@ const GrowthMetric = ({ label, value, sub, trend, color = 'text-white' }: any) =
     </div>
   );
 };
+
+const CalibrationSlider = ({ label, sub, value, min, max, step, onChange, unit = '', tooltip }: any) => (
+  <div className="group relative space-y-4 p-6 bg-slate-950/50 rounded-2xl border border-slate-800/50 hover:border-indigo-500/30 transition-all">
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">{sub}</p>
+      </div>
+      <div className="text-xl font-black text-white">{value}{unit}</div>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+    />
+    <div className="flex justify-between text-[8px] font-bold text-slate-700 uppercase">
+      <span>{min}{unit}</span>
+      <span>{max}{unit}</span>
+    </div>
+    {tooltip && (
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 p-3 bg-slate-800 text-white text-[10px] font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl border border-slate-700 leading-relaxed">
+        {tooltip}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+      </div>
+    )}
+  </div>
+);
 
 const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleStatus: any; onQueueAlert: any }) => {
   const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt) : null;
