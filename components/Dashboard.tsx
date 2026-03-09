@@ -1,14 +1,27 @@
 
-import React, { useMemo, useState } from 'react';
-import { WellnessEntry } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { WellnessEntry, SystemCalibration } from '../types';
 import { storageService } from '../services/storageService';
 import Insights from './Insights';
 import { Watch, Settings } from 'lucide-react';
 
-const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hideAction = false, onUserUpdate }) => {
+const Dashboard: React.FC<any> = ({ entries, user, onUserUpdate }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const regime = storageService.calculateRegime(entries, user.personalityCalibration);
+  const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const systemCalibration = await storageService.getSystemCalibration();
+      setCalibration(systemCalibration);
+    };
+    fetchData();
+  }, []);
+
+  const regime = useMemo(() => 
+    storageService.calculateRegime(entries, user.personalityCalibration, calibration || undefined),
+    [entries, user.personalityCalibration, calibration]
+  );
 
   const statusMap = {
     'BUILD': { label: 'BUILD REGIME', color: 'from-emerald-500/20 to-emerald-600/20', text: 'text-emerald-600', border: 'border-emerald-100', sub: 'Optimal Resilience & High Capacity' },
@@ -42,7 +55,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onNewReport, onSubmaxTest, hi
     try {
       setIsUpdating(true);
       await storageService.updateUserStatus(user.id, { hasWearable: newVal });
-    } catch (err) {
+    } catch {
       // Rollback on error
       if (onUserUpdate) {
         onUserUpdate({ ...user, hasWearable: !newVal });
