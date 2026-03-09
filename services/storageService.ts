@@ -1,6 +1,13 @@
 
 import { supabase } from './supabaseClient';
-import { User, WellnessEntry, UserRole, Regime, SubmaxTest } from '../types';
+import { User, WellnessEntry, UserRole, Regime, SubmaxTest, SystemCalibration, PersonalityCalibration, TrainingFocus, Message, IntelligencePacket } from '../types';
+
+const DEFAULT_CALIBRATION: SystemCalibration = {
+  volatilityThreshold: 1.2,
+  decouplingThreshold: 0.5,
+  identityWeight: 0.3,
+  systemicStressFloor: 60
+};
 
 const checkConfig = () => {
   if (!supabase) throw new Error("Supabase is not configured. Please check your environment variables.");
@@ -62,7 +69,7 @@ export const storageService = {
         timezone: profileData.timezone || 'America/New_York',
         intelligencePacket: profileData.intelligence_packet
       };
-    } catch (err) {
+    } catch {
       return null;
     }
   },
@@ -343,6 +350,32 @@ export const storageService = {
     if (error) throw error;
   },
 
+  getSystemCalibration: async (): Promise<SystemCalibration> => {
+    checkConfig();
+    const { data, error } = await supabase!
+      .from('global_config')
+      .select('system_calibration')
+      .eq('id', 'SYSTEM_CALIBRATION')
+      .single();
+    
+    if (error || !data?.system_calibration) {
+      return DEFAULT_CALIBRATION;
+    }
+    return data.system_calibration;
+  },
+
+  updateSystemCalibration: async (calibration: SystemCalibration) => {
+    checkConfig();
+    const { error } = await supabase!
+      .from('global_config')
+      .upsert({ 
+        id: 'SYSTEM_CALIBRATION', 
+        system_calibration: calibration, 
+        updated_at: new Date().toISOString() 
+      });
+    if (error) throw error;
+  },
+
   getGlobalMetrics: async () => {
     checkConfig();
     const allUsers = await storageService.getAllUsers();
@@ -605,7 +638,7 @@ export const storageService = {
     return 50;
   },
 
-  calculateRegime: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED') => {
+  calculateRegime: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED', systemConfig: SystemCalibration = DEFAULT_CALIBRATION) => {
     const entryCount = entries.length;
     if (entryCount === 0) return { status: 'CALIBRATING' as Regime, reason: 'Building Baseline' };
     
@@ -616,15 +649,15 @@ export const storageService = {
 
     const latest = entries[0];
     const lookbackDays = storageService.getLookbackDays(entryCount);
-    const stats = storageService.calculateMetricStats(entries, lookbackDays, calibration);
-    const correlations = storageService.calculateCorrelations(entries, lookbackDays);
+    const stats = storageService.calculateMetricStats(entries, lookbackDays, calibration, systemConfig);
+    const correlations = storageService.calculateCorrelations(entries, lookbackDays, systemConfig);
     
     const avgWellness = stats.reduce((acc, s) => acc + s.avg, 0) / stats.length;
     const highVolatility = stats.some(s => s.status === 'VOLATILE');
     const moderateVolatility = stats.some(s => s.status === 'MODERATE');
     const negativeTrends = correlations && correlations.length > 0;
 
-    const isTurbulent = latest.injured || latest.feelingSick || highVolatility || avgWellness < 60 || negativeTrends || moderateVolatility;
+    const isTurbulent = latest.injured || latest.feelingSick || highVolatility || avgWellness < systemConfig.systemicStressFloor || negativeTrends || moderateVolatility;
 
     // Phase 2: Days 8-14 (Binary Phase: ADAPT or RESTORATION)
     if (entryCount <= 14) {
@@ -642,7 +675,7 @@ export const storageService = {
       };
     }
 
-    if (avgWellness < 60 || negativeTrends || moderateVolatility) {
+    if (avgWellness < systemConfig.systemicStressFloor || negativeTrends || moderateVolatility) {
       return { 
         status: 'RESTORATION' as Regime, 
         reason: negativeTrends ? 'Negative Trend Detected' : 'Recovery Deficit' 
@@ -662,7 +695,7 @@ export const storageService = {
     };
   },
 
-  calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21) => {
+  calculateCorrelations: (entries: WellnessEntry[], lookbackDays: number = 21, systemConfig: SystemCalibration = DEFAULT_CALIBRATION) => {
     if (entries.length < 7) return null;
     
     const now = new Date();
@@ -691,7 +724,7 @@ export const storageService = {
       const diff = avg2 - avg1;
       // For RPE, positive diff is bad (increasing load). 
       // For ALL other metrics (Readiness Scores), negative diff is bad (decreasing readiness).
-      const isNegativeTrend = (m === 'lastSessionRPE') ? diff > 0.5 : diff < -0.5;
+      const isNegativeTrend = (m === 'lastSessionRPE') ? diff > systemConfig.decouplingThreshold : diff < -systemConfig.decouplingThreshold;
       
       return {
         metric: m,
@@ -704,7 +737,7 @@ export const storageService = {
     return correlations;
   },
 
-  calculateMetricStats: (entries: WellnessEntry[], lookbackDays: number = 28, calibration: PersonalityCalibration = 'BALANCED') => {
+  calculateMetricStats: (entries: WellnessEntry[], lookbackDays: number = 28, calibration: PersonalityCalibration = 'BALANCED', systemConfig: SystemCalibration = DEFAULT_CALIBRATION) => {
     if (entries.length === 0) return [];
     
     const now = new Date();
@@ -726,11 +759,12 @@ export const storageService = {
     // Stoic: Low threshold (very sensitive)
     // Balanced: Standard threshold
     // Expressive: High threshold (less sensitive to noise)
+    const baseThreshold = systemConfig.volatilityThreshold;
     const thresholds = {
-      STOIC: { volatile: 0.8, moderate: 0.5 },
-      BALANCED: { volatile: 1.2, moderate: 0.8 },
-      EXPRESSIVE: { volatile: 1.8, moderate: 1.2 }
-    }[calibration] || { volatile: 1.2, moderate: 0.8 };
+      STOIC: { volatile: baseThreshold * 0.66, moderate: baseThreshold * 0.4 },
+      BALANCED: { volatile: baseThreshold, moderate: baseThreshold * 0.66 },
+      EXPRESSIVE: { volatile: baseThreshold * 1.5, moderate: baseThreshold }
+    }[calibration] || { volatile: baseThreshold, moderate: baseThreshold * 0.66 };
 
     return metrics.map(m => {
       const vals = recent.map(e => e[m.key]).filter(v => typeof v === 'number' && v !== null) as number[];
