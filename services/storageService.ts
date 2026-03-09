@@ -458,6 +458,62 @@ export const storageService = {
     };
   },
 
+  calculateUserHabitScore: (entries: WellnessEntry[]) => {
+    if (entries.length === 0) return 0;
+    
+    const now = new Date();
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(now.getDate() - 14);
+    
+    const recentEntries = entries.filter(e => new Date(e.isoDate) >= fourteenDaysAgo);
+    
+    // 1. Frequency (0-5 points)
+    // 14 entries in 14 days = 5 points
+    const frequencyScore = Math.min(5, (recentEntries.length / 14) * 5);
+    
+    // 2. Recency (0-3 points)
+    const lastEntry = entries[0];
+    const daysSinceLast = (now.getTime() - new Date(lastEntry.isoDate).getTime()) / (1000 * 60 * 60 * 24);
+    const recencyScore = Math.max(0, 3 - (daysSinceLast * 0.5));
+    
+    // 3. Consistency (0-2 points)
+    // Check if they log around the same time
+    let consistencyScore = 0;
+    if (recentEntries.length >= 3) {
+      const hours = recentEntries.map(e => new Date(e.isoDate).getHours());
+      const avgHour = hours.reduce((a, b) => a + b, 0) / hours.length;
+      const variance = hours.reduce((a, b) => a + Math.pow(b - avgHour, 2), 0) / hours.length;
+      // Lower variance = higher score. Variance < 2 hours is very consistent.
+      consistencyScore = Math.max(0, 2 - (variance / 4));
+    }
+
+    return parseFloat((frequencyScore + recencyScore + consistencyScore).toFixed(1));
+  },
+
+  calculateUserDivergence: (entries: WellnessEntry[], calibration: PersonalityCalibration = 'BALANCED', systemConfig?: SystemCalibration) => {
+    if (entries.length < 7) return 0;
+    
+    const latest = entries[0];
+    const stats = storageService.calculateMetricStats(entries, 28, calibration, systemConfig);
+    
+    // Divergence is the average Z-score of all readiness metrics
+    // We want to see how far today is from their 28-day normal
+    const readinessMetrics = ['sleepQuality', 'energy', 'stress', 'soreness', 'social'];
+    const zScores = stats
+      .filter(s => readinessMetrics.includes(s.key as string))
+      .map(s => {
+        const val = latest[s.key as keyof WellnessEntry] as number;
+        if (s.stdDev === 0) return 0;
+        return (val - s.avg) / s.stdDev;
+      });
+    
+    if (zScores.length === 0) return 0;
+    const avgZ = zScores.reduce((a, b) => a + b, 0) / zScores.length;
+    
+    // Return as a percentage-like drift (e.g., +2.4 or -1.5)
+    return parseFloat(avgZ.toFixed(1));
+  },
+
   saveAdjustment: async (userId: string, coachId: string, message: string) => {
     checkConfig();
     await supabase!.from('coach_adjustments').insert([{ user_id: userId, coach_id: coachId, message }]);
