@@ -1,11 +1,11 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { WellnessEntry, User, IntelligencePacket } from '../types';
+import { WellnessEntry, User, IntelligencePacket, SystemCalibration } from '../types';
 import { storageService } from '../services/storageService';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell,
-  ComposedChart, Line, ReferenceArea
+  ResponsiveContainer, Cell,
+  ComposedChart, Line, ReferenceArea, Bar
 } from 'recharts';
 
 interface TrendsProps {
@@ -166,14 +166,22 @@ const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet 
 
 const Trends: React.FC<TrendsProps> = ({ entries = [], user }) => {
   const [inflectionPoint, setInflectionPoint] = useState<{ metric: string; date: string } | null>(null);
+  const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
+  const [overlayMetrics, setOverlayMetrics] = useState<string[]>([]);
 
   useEffect(() => {
+    const fetchData = async () => {
+      const systemCalibration = await storageService.getSystemCalibration();
+      setCalibration(systemCalibration);
+    };
+    fetchData();
+
     const loadInflection = () => {
       const stored = localStorage.getItem('ai_inflection_point');
       if (stored) {
         try {
           setInflectionPoint(JSON.parse(stored));
-        } catch (e) {
+        } catch {
           console.error("Failed to parse inflection point");
         }
       }
@@ -208,14 +216,19 @@ const Trends: React.FC<TrendsProps> = ({ entries = [], user }) => {
       const date = new Date(e.isoDate);
       return {
         date: `${date.getMonth() + 1}/${date.getDate()}`,
-        rpe: e.lastSessionRPE
+        rpe: e.lastSessionRPE,
+        sleepQuality: e.sleepQuality,
+        energy: e.energy,
+        stress: e.stress,
+        soreness: e.soreness,
+        social: e.social
       };
     });
 
-    const metricStats = storageService.calculateMetricStats(entries, 28, user.personalityCalibration);
+    const metricStats = storageService.calculateMetricStats(entries, 28, user.personalityCalibration, calibration || undefined);
     
     return { wellnessData: wellness, srpeData: srpe, stats: metricStats };
-  }, [entries, user.personalityCalibration]);
+  }, [entries, user.personalityCalibration, calibration]);
 
   if (!entries || entries.length === 0) {
     return (
@@ -251,22 +264,61 @@ const Trends: React.FC<TrendsProps> = ({ entries = [], user }) => {
 
       {/* sRPE Bar Chart - The Load Foundation */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Training Load (sRPE)</h3>
-          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">Load Foundation</span>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Training Load (sRPE)</h3>
+            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">System Load vs Readiness Overlay</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {wellnessMetrics.filter(m => m.key !== 'sleepHours').map(m => (
+              <button
+                key={m.key}
+                onClick={() => setOverlayMetrics(prev => 
+                  prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key]
+                )}
+                className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${
+                  overlayMetrics.includes(m.key)
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                }`}
+              >
+                {m.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="h-32 w-full">
+        <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={srpeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            <ComposedChart data={srpeData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="date" hide />
-              <YAxis domain={[0, 10]} hide />
-              <Bar dataKey="rpe" radius={[4, 4, 0, 0]}>
+              <YAxis yAxisId="left" domain={[0, 10]} hide />
+              <YAxis yAxisId="right" domain={[0, 7]} hide />
+              <Tooltip 
+                contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                labelStyle={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '10px' }}
+              />
+              <Bar yAxisId="left" dataKey="rpe" name="sRPE" radius={[4, 4, 0, 0]}>
                 {srpeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.rpe > 7 ? '#4f46e5' : '#e2e8f0'} />
                 ))}
               </Bar>
-            </BarChart>
+              {overlayMetrics.includes('energy') && (
+                <Line yAxisId="right" type="monotone" dataKey="energy" name="Energy" stroke="#10b981" strokeWidth={3} dot={false} />
+              )}
+              {overlayMetrics.includes('sleepQuality') && (
+                <Line yAxisId="right" type="monotone" dataKey="sleepQuality" name="Sleep" stroke="#3b82f6" strokeWidth={3} dot={false} />
+              )}
+              {overlayMetrics.includes('stress') && (
+                <Line yAxisId="right" type="monotone" dataKey="stress" name="Stress" stroke="#f59e0b" strokeWidth={3} dot={false} />
+              )}
+              {overlayMetrics.includes('soreness') && (
+                <Line yAxisId="right" type="monotone" dataKey="soreness" name="Freshness" stroke="#ec4899" strokeWidth={3} dot={false} />
+              )}
+              {overlayMetrics.includes('social') && (
+                <Line yAxisId="right" type="monotone" dataKey="social" name="Mood" stroke="#8b5cf6" strokeWidth={3} dot={false} />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
