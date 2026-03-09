@@ -18,6 +18,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const [users, setUsers] = useState<User[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
+  const [allEntries, setAllEntries] = useState<WellnessEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingCalibration, setSavingCalibration] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,16 +28,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [allUsers, globalMetrics, systemCalibration] = await Promise.all([
+      const [allUsers, globalMetrics, systemCalibration, entries] = await Promise.all([
         storageService.getAllUsers(),
         storageService.getGlobalMetrics(),
-        storageService.getSystemCalibration()
+        storageService.getSystemCalibration(),
+        storageService.getAllEntries()
       ]);
       setUsers(allUsers);
       setMetrics(globalMetrics);
       setCalibration(systemCalibration);
-    } catch (err) {
-      console.error("Error fetching admin data:", err);
+      setAllEntries(entries);
+    } catch {
+      console.error("Error fetching admin data");
     } finally {
       setLoading(false);
     }
@@ -270,6 +273,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
               value={metrics?.totalUsers || 0} 
               sub="Total Registered Users"
               trend={[30, 40, 35, 50, 45, 60, 75]}
+              tooltip="Total number of users currently in the system, including athletes, coaches, and admins."
             />
             <GrowthMetric 
               label="Acquisition Velocity" 
@@ -277,6 +281,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
               sub={`New Users (${growthTimeframe})`}
               trend={[10, 15, 8, 12, 20, 18, 25]}
               color="text-emerald-400"
+              tooltip="The rate at which new athletes are joining the platform within the selected timeframe."
             />
             <GrowthMetric 
               label="Lindy Milestone" 
@@ -284,6 +289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
               sub="Users at 30+ Days"
               trend={[5, 8, 12, 15, 18, 22, 28]}
               color="text-indigo-400"
+              tooltip="Users who have survived the first 30 days. This is a key indicator of long-term retention and product-market fit."
             />
             <GrowthMetric 
               label="Churn Warning" 
@@ -291,11 +297,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
               sub="Inactive (7 Days)"
               trend={[12, 10, 15, 8, 5, 7, 4]}
               color="text-rose-400"
+              tooltip="Athletes who have not logged any data in the last 7 days. These users are at high risk of churning."
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-800/50">
-            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-slate-800">
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50 group relative">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Measures daily engagement relative to monthly active users. Higher is stickier.
+              </div>
               <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
                 <Activity className="w-5 h-5 text-indigo-400" />
               </div>
@@ -307,7 +317,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50 group relative">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                The average number of new users invited by each existing user.
+              </div>
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-emerald-400" />
               </div>
@@ -319,7 +332,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50">
+            <div className="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50 group relative">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Average time it takes for the AI to generate a response after a user logs data.
+              </div>
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
                 <Clock className="w-5 h-5 text-amber-400" />
               </div>
@@ -368,13 +384,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-950/50">
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">User / Identity</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <div className="group relative inline-block cursor-help">
+                      User / Identity
+                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                        The athlete's name and primary contact email.
+                      </div>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <div className="group relative inline-block cursor-help">
+                      Status
+                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                        Current subscription tier and system flags (Premium, Frozen, etc.).
+                      </div>
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
                     <div className="group relative inline-block cursor-help">
                       Habit Score
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
-                        A composite score (1-10) based on log frequency, timing consistency, and long-term retention.
+                        A composite score (1-10) based on log frequency, timing consistency, and recency.
                       </div>
                     </div>
                   </th>
@@ -382,11 +412,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                     <div className="group relative inline-block cursor-help">
                       Divergence
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
-                        How far today's physical data (HRV/Sleep) has drifted from their normal baseline. A high positive number means they are significantly more stressed than usual.
+                        How far today's wellness data has drifted from their 28-day normal. Positive = more stressed/fatigued.
                       </div>
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Last Active</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <div className="group relative inline-block cursor-help">
+                      Last Active
+                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                        The exact timestamp of the user's last interaction with the platform.
+                      </div>
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
@@ -395,6 +432,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <UserRow 
                     key={user.id} 
                     user={user} 
+                    entries={allEntries.filter(e => e.userId === user.id)}
+                    systemCalibration={calibration || undefined}
                     onToggleStatus={toggleStatus}
                     onQueueAlert={queueAlert}
                   />
@@ -427,13 +466,19 @@ const MetricCard = ({ label, value, sub, icon, color, tooltip }: any) => (
   </div>
 );
 
-const GrowthMetric = ({ label, value, sub, trend, color = 'text-white' }: any) => {
+const GrowthMetric = ({ label, value, sub, trend, color = 'text-white', tooltip }: any) => {
   const max = Math.max(...trend);
   const min = Math.min(...trend);
   const range = max - min || 1;
   
   return (
-    <div className="space-y-4">
+    <div className="group relative space-y-4">
+      {tooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 p-3 bg-slate-800 text-white text-[10px] font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl border border-slate-700 leading-relaxed">
+          {tooltip}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+        </div>
+      )}
       <div className="flex justify-between items-end">
         <div>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
@@ -497,9 +542,12 @@ const CalibrationSlider = ({ label, sub, value, min, max, step, onChange, unit =
   </div>
 );
 
-const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleStatus: any; onQueueAlert: any }) => {
+const UserRow = ({ user, entries, systemCalibration, onToggleStatus, onQueueAlert }: { user: User; entries: WellnessEntry[]; systemCalibration?: SystemCalibration; onToggleStatus: any; onQueueAlert: any }) => {
   const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt) : null;
   const isStale = lastActive && (new Date().getTime() - lastActive.getTime()) > (48 * 60 * 60 * 1000);
+
+  const habitScore = useMemo(() => storageService.calculateUserHabitScore(entries), [entries]);
+  const divergence = useMemo(() => storageService.calculateUserDivergence(entries, user.personalityCalibration, systemCalibration), [entries, user.personalityCalibration, systemCalibration]);
 
   return (
     <tr className="hover:bg-slate-800/50 transition-colors">
@@ -534,14 +582,27 @@ const UserRow = ({ user, onToggleStatus, onQueueAlert }: { user: User; onToggleS
         </div>
       </td>
       <td className="px-6 py-4 text-center">
-        <div className="inline-flex items-center justify-center w-8 h-8 bg-slate-950 rounded-lg text-xs font-black text-slate-400 border border-slate-800">
-          8.5
+        <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black border ${
+          habitScore >= 8 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+          habitScore >= 5 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+          'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        }`}>
+          {habitScore}
         </div>
       </td>
       <td className="px-6 py-4 text-center">
         <div className="flex flex-col items-center">
-          <span className="text-xs font-black text-rose-400">+2.4</span>
-          <span className="text-[8px] text-slate-600 font-bold uppercase">Intensity</span>
+          <span className={`text-xs font-black ${
+            divergence > 1.5 ? 'text-rose-400' :
+            divergence > 0.5 ? 'text-amber-400' :
+            divergence < -1.5 ? 'text-indigo-400' :
+            'text-emerald-400'
+          }`}>
+            {divergence > 0 ? `+${divergence}` : divergence}
+          </span>
+          <span className="text-[8px] text-slate-600 font-bold uppercase">
+            {Math.abs(divergence) > 1.5 ? 'High Drift' : 'Stable'}
+          </span>
         </div>
       </td>
       <td className="px-6 py-4">
