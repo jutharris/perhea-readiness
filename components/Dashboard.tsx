@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { WellnessEntry, SystemCalibration } from '../types';
+import { SystemCalibration } from '../types';
 import { storageService } from '../services/storageService';
 import Insights from './Insights';
 import { Watch, Settings } from 'lucide-react';
