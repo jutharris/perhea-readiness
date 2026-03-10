@@ -26,7 +26,7 @@ const CreatorLab: React.FC<CreatorLabProps> = ({ onBack }) => {
       await storageService.updateGlobalSoulDocument(soulDoc);
       setStatus('Soul Document Synchronized.');
       setTimeout(() => setStatus(null), 3000);
-    } catch (err) {
+    } catch {
       setStatus('Sync Failed.');
     } finally {
       setSaving(false);
