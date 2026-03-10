@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { User, SubmaxTest, TrainingFocus, PersonalityCalibration, Message, SystemCalibration } from '../types';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { User, SubmaxTest, TrainingFocus, PersonalityCalibration, Message, WellnessEntry } from '../types';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -117,15 +117,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
   const [showChat, setShowChat] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [activeLines, setActiveLines] = useState(['rpe', 'stress']);
-  const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const systemCalibration = await storageService.getSystemCalibration();
-      setCalibration(systemCalibration);
-    };
-    fetchData();
-  }, []);
 
   const trendData = useMemo(() => {
     const dataMap: Record<string, any> = {};
@@ -180,7 +171,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     setActiveLines(prev => prev.includes(line) ? prev.filter(l => l !== line) : [...prev, line]);
   };
 
-  const fetchTests = async () => {
+  const fetchTests = useCallback(async () => {
     setLoading(true);
     try {
       const data = await storageService.getSubmaxTestsForUser(athlete.id);
@@ -190,18 +181,18 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     } finally {
       setLoading(false);
     }
-  };
+  }, [athlete.id]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const data = await storageService.getMessages(athlete.id);
       setMessages(data);
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [athlete.id]);
 
-  const markAllRead = async () => {
+  const markAllRead = useCallback(async () => {
     try {
       await storageService.markAthleteAsRead(coachId, athlete.id);
       await fetchMessages();
@@ -209,7 +200,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     } catch (err) {
       console.error("Error marking all as read:", err);
     }
-  };
+  }, [coachId, athlete.id, fetchMessages, onRefresh]);
 
   const unreadCount = useMemo(() => {
     const unreadMsgs = messages.filter(m => m.receiverId === coachId && m.read !== true).length;
@@ -223,19 +214,19 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
-  }, [athlete.id]);
+  }, [fetchTests, fetchMessages]);
 
   useEffect(() => {
     if (unreadCount > 0) {
       markAllRead();
     }
-  }, [unreadCount, athlete.id]);
+  }, [unreadCount, markAllRead]);
 
   useEffect(() => {
     if (showChat && unreadCount > 0) {
       markAllRead();
     }
-  }, [showChat]);
+  }, [showChat, unreadCount, markAllRead]);
 
   const updateFocus = async (focus: TrainingFocus) => {
     try {
@@ -274,7 +265,7 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     fetchMessages();
   };
 
-  const getTestAnalysis = (test: SubmaxTest, index: number) => {
+  const getTestAnalysis = useCallback((test: SubmaxTest, index: number) => {
     const compliance = test.summary?.compliance || 'COMPLIANT';
     if (compliance === 'NON_COMPLIANT') {
       return { change: 0, label: 'INVALID TEST', color: 'text-rose-400' };
@@ -313,16 +304,20 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
     if (absChange <= 0.5) return { change, label: 'STABILIZING', color: 'text-indigo-500' };
     if (absChange <= 1.5) return { change, label: change > 0 ? 'SUBTLE IMPROVEMENT' : 'SUBTLE DECLINE', color: change > 0 ? 'text-emerald-500' : 'text-amber-500' };
     return { change, label: change > 0 ? 'SIGNIFICANT GAIN' : 'SIGNIFICANT FATIGUE', color: change > 0 ? 'text-emerald-600' : 'text-rose-600' };
-  };
+  }, [tests, athlete.trainingFocus, athleteAge]);
 
-  const coachBrief = useMemo(() => {
-    if (tests.length < 2) return null;
-    const analysis = getTestAnalysis(tests[0], 0);
-    if (analysis.change > -1.5) return null;
-
-    const correlations = storageService.calculateCorrelations(entries, 21, calibration || undefined);
-    return correlations;
-  }, [tests, entries, calibration]);
+  const stabilityIndex = useMemo(() => {
+    if (!athleteAge || athleteAge < 45 || tests.length < 3) return null;
+    const recentTests = tests.slice(0, 5);
+    const changes = recentTests.map((t, i) => {
+      if (i === recentTests.length - 1) return null;
+      const analysis = getTestAnalysis(t, i);
+      return Math.abs(analysis.change);
+    }).filter(c => c !== null) as number[];
+    
+    const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+    return Math.max(0, Math.min(100, 100 - (avgChange * 10))); // Scale: 1% avg change = 90 index
+  }, [athleteAge, tests, getTestAnalysis]);
 
   const comparisonData = useMemo(() => {
     if (!comparisonId) return null;
@@ -343,19 +338,6 @@ const AthleteDetail: React.FC<any> = ({ athlete: initialAthlete, entries, coachI
 
     return { testA, testB, mA, mB };
   }, [comparisonId, tests]);
-
-  const stabilityIndex = useMemo(() => {
-    if (!athleteAge || athleteAge < 45 || tests.length < 3) return null;
-    const recentTests = tests.slice(0, 5);
-    const changes = recentTests.map((t, i) => {
-      if (i === recentTests.length - 1) return null;
-      const analysis = getTestAnalysis(t, i);
-      return Math.abs(analysis.change);
-    }).filter(c => c !== null) as number[];
-    
-    const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
-    return Math.max(0, Math.min(100, 100 - (avgChange * 10))); // Scale: 1% avg change = 90 index
-  }, [athleteAge, tests]);
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] text-slate-900 font-sans p-8 overflow-y-auto">
