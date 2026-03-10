@@ -421,7 +421,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     <div className="group relative inline-block cursor-help">
                       User / Identity
-                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                      <div className="absolute top-full left-0 mt-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
                         The athlete's name and primary contact email.
                       </div>
                     </div>
@@ -429,7 +429,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     <div className="group relative inline-block cursor-help">
                       Status
-                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                      <div className="absolute top-full left-0 mt-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
                         Current subscription tier and system flags (Premium, Frozen, etc.).
                       </div>
                     </div>
@@ -437,7 +437,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
                     <div className="group relative inline-block cursor-help">
                       Habit Score
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
                         A composite score (1-10) based on log frequency, timing consistency, and recency.
                       </div>
                     </div>
@@ -445,7 +445,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">
                     <div className="group relative inline-block cursor-help">
                       Divergence
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
                         How far today's wellness data has drifted from their 28-day normal. Positive = more stressed/fatigued.
                       </div>
                     </div>
@@ -453,7 +453,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     <div className="group relative inline-block cursor-help">
                       Last Active
-                      <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
+                      <div className="absolute top-full left-0 mt-2 w-48 p-2 bg-slate-800 text-white text-[9px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 normal-case tracking-normal shadow-xl border border-slate-700">
                         The exact timestamp of the user's last interaction with the platform.
                       </div>
                     </div>
