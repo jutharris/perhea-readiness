@@ -125,7 +125,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, c
         config: { systemInstruction }
       });
       return fallbackResponse.text || "Maintaining stable protocol based on current metrics.";
-    } catch (innerError) {
+    } catch {
       return "Maintaining stable protocol based on current metrics.";
     }
   }
@@ -211,7 +211,7 @@ export const getAthleteInteraction = async (
         config: { responseMimeType: "application/json" }
       });
       return fallbackResponse.text || JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
-    } catch (innerError) {
+    } catch {
       return JSON.stringify({ text: "I'm having trouble accessing your longitudinal data right now." });
     }
   }
@@ -303,7 +303,7 @@ export const getDeepAudit = async (entries: WellnessEntry[]): Promise<Intelligen
         })),
         lastDeepAudit: new Date().toISOString()
       };
-    } catch (innerError) {
+    } catch {
       throw error;
     }
   }
@@ -344,7 +344,7 @@ export const getCoachDailyBriefing = async (athletes: User[], allEntries: Wellne
         contents: prompt 
       });
       return fallbackResponse.text || "Squad adaptation is stable across all primary vectors.";
-    } catch (innerError) {
+    } catch {
       return "Manual review of individual turbulence flags recommended.";
     }
   }
