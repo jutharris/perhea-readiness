@@ -30,12 +30,14 @@ async function startServer() {
   // Request logging and custom header
   app.use((req, res, next) => {
     res.setHeader('X-Nerve-Center', 'active');
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log(`[App] ${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
   });
 
   // API Routes - MUST BE BEFORE VITE MIDDLEWARE
   const apiRouter = express.Router();
+
+  app.use("/api", apiRouter);
 
   apiRouter.use((req, res, next) => {
     console.log(`[API Router] ${req.method} ${req.path}`);
@@ -51,7 +53,7 @@ async function startServer() {
     });
   });
 
-  apiRouter.get("/admin/nerve-center", async (req, res) => {
+  apiRouter.get(["/admin/nerve-center", "/admin/nerve-center/"], async (req, res) => {
     console.log("Nerve Center API hit - Method:", req.method, "Path:", req.path);
     
     const authHeader = req.headers.authorization;
@@ -183,8 +185,6 @@ async function startServer() {
     res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
   });
 
-  app.use("/api", apiRouter);
-
   // Vite integration
   const isProd = process.env.NODE_ENV === "production";
   
@@ -197,8 +197,11 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     console.log("Starting in PRODUCTION mode");
+    // In production, we serve the static files from dist
+    // Note: AI Studio might still be in dev mode, so we handle both
     app.use(express.static("dist"));
     app.get("*", (req, res, next) => {
+      // If it's an API route that wasn't matched, don't serve index.html
       if (req.path.startsWith('/api/')) return next();
       res.sendFile("index.html", { root: "dist" });
     });
