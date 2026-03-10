@@ -496,8 +496,9 @@ export const storageService = {
     }
 
     const response = await fetch('/api/admin/nerve-center', { headers });
+    const text = await response.text();
+    
     if (!response.ok) {
-      const text = await response.text();
       let errorMsg = 'Failed to fetch Nerve Center data';
       try {
         const error = JSON.parse(text);
@@ -510,7 +511,13 @@ export const storageService = {
       }
       throw new Error(errorMsg);
     }
-    return response.json();
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse Nerve Center response as JSON:", text.substring(0, 500));
+      throw new Error(`Invalid response format from Nerve Center: ${text.substring(0, 50)}...`, { cause: e });
+    }
   },
 
   calculateUserHabitScore: (entries: WellnessEntry[]) => {
