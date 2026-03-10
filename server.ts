@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import { createClient } from '@supabase/supabase-js';
-import process from 'node:process';
+import process from 'process';
 import dotenv from 'dotenv';
 
 dotenv.config();
