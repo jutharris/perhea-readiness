@@ -139,7 +139,9 @@ export const getAthleteInteraction = async (
   entries: WellnessEntry[], 
   type: 'EXPLAIN_LOGIC' | 'ADD_CONTEXT' | 'DATA_QUERY',
   userMessage?: string,
-  personalityCalibration: string = 'BALANCED'
+  personalityCalibration: string = 'BALANCED',
+  role: string = 'ATHLETE',
+  athleteName: string = 'The athlete'
 ) => {
   const ai = getAIInstance();
   if (!ai) return "Interaction offline.";
@@ -166,15 +168,19 @@ export const getAthleteInteraction = async (
     ALSO, identify the exact date (YYYY-MM-DD) when the system turbulence or trend shift first became apparent for the primary driver metric. 
     Format your response as a JSON object: { "text": "your explanation here", "inflectionPoint": { "metric": "metricKey", "date": "YYYY-MM-DD" } }`;
   } else if (type === 'ADD_CONTEXT') {
-    specificInstruction = `The athlete has provided additional context: "${userMessage}". Acknowledge this context and explain how it might explain the current biological turbulence or why the system should adjust its sensitivity.
+    specificInstruction = `Additional context provided: "${userMessage}". Acknowledge this context and explain how it might explain the current biological turbulence or why the system should adjust its sensitivity.
     Format your response as a JSON object: { "text": "your response here" }`;
   } else if (type === 'DATA_QUERY') {
-    specificInstruction = `The athlete asked a specific data question: "${userMessage}". Answer this question using the provided longitudinal data. Focus on trends, averages, and correlations.
+    specificInstruction = `A specific data question was asked: "${userMessage}". Answer this question using the provided longitudinal data. Focus on trends, averages, and correlations.
     Format your response as a JSON object: { "text": "your answer here" }`;
   }
 
+  const personaInstruction = role === 'COACH'
+    ? `Act as an elite AI Performance Director briefing a Head Coach about ${athleteName}. Speak clinically, objectively, and in the third person (refer to them as "${athleteName}" or "the athlete", NEVER "you").`
+    : `Act as an AI Assistant Coach talking directly to the athlete. Speak in the first person to them (use "you" and "your").`;
+
   const prompt = `
-    Act as an AI Assistant Coach for a high-performance athlete.
+    ${personaInstruction}
     Data Context (last ${lookback} days): ${JSON.stringify(contextData)}
     Athlete Personality: ${personalityCalibration}
 
