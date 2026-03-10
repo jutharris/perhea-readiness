@@ -32,7 +32,8 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
         }
         
         // Create a unique cache key based on the latest entry, user role, personality, and session
-        const cacheKey = `ai_insight_${latestId}_${role}_${personalityCalibration}_${sessionId}`;
+        // Added _v2 to bust the old cache immediately for the new Coach BLUF format
+        const cacheKey = `ai_insight_${latestId}_${role}_${personalityCalibration}_${sessionId}_v2`;
         const cached = localStorage.getItem(cacheKey);
 
         if (cached) {
@@ -101,7 +102,14 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
         await storageService.sendMessage(user.id, user.coachId, message || '');
         setInteractionResponse("Message sent to your coach.");
       } else {
-        const resJson = await getAthleteInteraction(entries, type, message, personalityCalibration);
+        const resJson = await getAthleteInteraction(
+          entries, 
+          type, 
+          message, 
+          personalityCalibration,
+          role,
+          `${user.firstName} ${user.lastName}`
+        );
         const res = JSON.parse(resJson);
         setInteractionResponse(res.text);
         if (res.inflectionPoint) {
