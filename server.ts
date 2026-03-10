@@ -35,7 +35,14 @@ async function startServer() {
   });
 
   // API Routes - MUST BE BEFORE VITE MIDDLEWARE
-  app.get("/api/health", (req, res) => {
+  const apiRouter = express.Router();
+
+  apiRouter.use((req, res, next) => {
+    console.log(`[API Router] ${req.method} ${req.path}`);
+    next();
+  });
+
+  apiRouter.get("/health", (req, res) => {
     console.log("Health check hit");
     res.json({ 
       status: "ok", 
@@ -44,14 +51,13 @@ async function startServer() {
     });
   });
 
-  app.get("/api/admin/nerve-center", async (req, res) => {
-    console.log("Nerve Center API hit");
+  apiRouter.get("/admin/nerve-center", async (req, res) => {
+    console.log("Nerve Center API hit - Method:", req.method, "Path:", req.path);
     
     const authHeader = req.headers.authorization;
     const token = authHeader?.split(' ')[1];
 
     // Create a request-specific Supabase client using the user's token
-    // This ensures RLS policies are correctly applied based on the user's role
     const userSupabase = (supabaseUrl && supabaseAnonKey && token)
       ? createClient(supabaseUrl, supabaseAnonKey, {
           global: { headers: { Authorization: `Bearer ${token}` } }
@@ -71,7 +77,9 @@ async function startServer() {
     }
 
     try {
-      const { data: { user } } = await userSupabase.auth.getUser();
+      const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+      if (authError) throw authError;
+      
       console.log("Authenticated User:", user?.email, user?.id);
 
       const now = new Date();
@@ -166,9 +174,16 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error("Nerve Center Error:", err);
-      res.status(500).json({ error: err.message || "Internal Server Error" });
+      res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
     }
   });
+
+  apiRouter.use((req, res) => {
+    console.log(`[API Router] 404 - ${req.method} ${req.path}`);
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+  });
+
+  app.use("/api", apiRouter);
 
   // Vite integration
   const isProd = process.env.NODE_ENV === "production";
@@ -182,11 +197,8 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     console.log("Starting in PRODUCTION mode");
-    // In production, we serve the static files from dist
-    // Note: AI Studio might still be in dev mode, so we handle both
     app.use(express.static("dist"));
     app.get("*", (req, res, next) => {
-      // If it's an API route that wasn't matched, don't serve index.html
       if (req.path.startsWith('/api/')) return next();
       res.sendFile("index.html", { root: "dist" });
     });
