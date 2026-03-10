@@ -236,7 +236,7 @@ const App: React.FC = () => {
       if (updatedUser) setUser(updatedUser);
       setShowInviteCard(false);
       setInviteCode(null);
-    } catch (err: any) {
+    } catch {
       alert("Invalid Squad Code.");
     } finally {
       setActionLoading(false);
