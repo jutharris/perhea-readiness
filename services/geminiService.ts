@@ -99,7 +99,8 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, c
        - Use the "Budget Framework": If an athlete is deep in the red, suggest finding a "Recovery Budget" over the next 72 hours rather than telling them to skip training.
 
     OUTPUT STYLE:
-    - 2 sentences of high-density insight.
+    - 2 to 3 sentences of high-density, highly specific insight.
+    - CRITICAL: You MUST explicitly mention at least one specific metric, trend, or correlation you observed in the data (e.g., "Your sleep dropped to 4/7 over the last two days, but your energy is holding steady"). Do not give generic "everything is stable" summaries.
     - Avoid technical jargon.
     - Use the role context: ${role}.
     ${calibrationNote ? `- Acknowledge that you are still calibrating but provide the best insight possible.` : ""}
@@ -107,7 +108,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, c
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3.1-pro-preview", 
       contents: prompt,
       config: { 
         systemInstruction,
@@ -193,7 +194,7 @@ export const getAthleteInteraction = async (
 
   try {
     const response = await ai.models.generateContent({ 
-      model: "gemini-3-flash-preview", 
+      model: "gemini-3.1-pro-preview", 
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
