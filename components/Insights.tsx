@@ -49,7 +49,19 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
           EXPRESSIVE: "This athlete is EXPRESSIVE. They report based on current mood and 'vibes', which can be volatile. Filter for the signal within the noise; do not overreact to single-day swings."
         }[personalityCalibration] || "";
 
-        const systemInstruction = `You are an AI Assistant Coach for a high-performance athlete. 
+        const systemInstruction = role === 'COACH' 
+          ? `You are an elite AI Performance Director briefing a Head Coach. 
+          Analyze the athlete's recent data. 
+          If the athlete is stable, provide a stable action.
+          Return ONLY a JSON object with this exact structure (no markdown, no code blocks):
+          {
+            "action": "Immediate 1-on-1 Wellness Check." or "Continue Plan.",
+            "why": "Sustained decoupling between sleep volume and perceived energy." or "Metrics tracking logically with biological markers.",
+            "data": "Averaging 8.5h of sleep, but Energy is stuck at 3/7." or "Energy at 7, systemic stress remains low."
+          }
+          Keep it clinical, objective, and extremely concise (BLUF framework).
+          ${personalityDirectives}`
+          : `You are an AI Assistant Coach for a high-performance athlete. 
         Your tone is supportive, calm, and educational. 
         ${personalityDirectives}
         Do not be overly reactive to single-day dips unless the personality calibration suggests otherwise. 
@@ -111,10 +123,22 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
     }
   };
 
+  let blufData = null;
+  if (role === 'COACH' && analysis) {
+    try {
+      const cleanStr = analysis.replace(/```json/g, '').replace(/```/g, '').trim();
+      blufData = JSON.parse(cleanStr);
+    } catch {
+      // Fallback to normal text if parsing fails
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-4 relative overflow-hidden">
-        <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI Assistant Coach</h3>
+        <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+          {role === 'COACH' ? 'AI Performance Briefing' : 'AI Assistant Coach'}
+        </h3>
         
         <div className="space-y-4">
           <div className="relative">
@@ -132,9 +156,27 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
                     <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Refreshing...</span>
                   </div>
                 )}
-                <p className={`text-sm font-medium text-white/90 leading-relaxed italic transition-opacity duration-500 ${loading ? 'opacity-50' : 'opacity-100'}`}>
-                  "{analysis}"
-                </p>
+                
+                {blufData ? (
+                  <div className={`space-y-4 transition-opacity duration-500 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl">
+                      <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Action</h4>
+                      <p className="text-sm font-bold text-white">{blufData.action}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">The Why</h4>
+                      <p className="text-sm font-medium text-slate-300">{blufData.why}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">The Data</h4>
+                      <p className="text-sm font-medium text-slate-400">{blufData.data}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={`text-sm font-medium text-white/90 leading-relaxed italic transition-opacity duration-500 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+                    "{analysis}"
+                  </p>
+                )}
               </div>
             )}
           </div>
