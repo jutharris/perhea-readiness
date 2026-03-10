@@ -22,7 +22,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onComplete }) => {
   useEffect(() => {
     if (user.firstName && !firstName) setFirstName(user.firstName);
     if (user.lastName && !lastName) setLastName(user.lastName);
-  }, [user]);
+  }, [user, firstName, lastName]);
 
   const handleComplete = async () => {
     if (!firstName || !lastName) {
