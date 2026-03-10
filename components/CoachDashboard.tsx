@@ -6,14 +6,22 @@ import { User, WellnessEntry } from '../types';
 import { Zap, Users, CheckCircle2, Search } from 'lucide-react';
 
 const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMessageIds, onViewAthlete, onRefresh }) => {
-  const [brief, setBrief] = useState('');
+  const [brief, setBrief] = useState<{ squadSummary: string; athleteHeadlines: Record<string, string> } | null>(null);
   const [markingRead, setMarkingRead] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'TRIAGE' | 'SQUAD'>('TRIAGE');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (athletes.length > 0) {
-      getCoachDailyBriefing(athletes, allEntries).then(setBrief);
+      getCoachDailyBriefing(athletes, allEntries).then(res => {
+        try {
+          const parsed = JSON.parse(res);
+          setBrief(parsed);
+        } catch (e) {
+          console.error("Failed to parse briefing", e);
+          setBrief({ squadSummary: "Briefing unavailable.", athleteHeadlines: {} });
+        }
+      });
     }
   }, [athletes, coach.id, allEntries]);
 
@@ -97,7 +105,7 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
                 <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">AI Performance Briefing</h3>
               </div>
               <p className="text-sm leading-relaxed text-slate-300 font-medium">
-                {athletes.length === 0 ? "Awaiting your first athlete to join using your squad code." : (brief || 'Analyzing squad metrics...')}
+                {athletes.length === 0 ? "Awaiting your first athlete to join using your squad code." : (brief?.squadSummary || 'Analyzing squad metrics...')}
               </p>
             </div>
           </div>
@@ -144,6 +152,7 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
                   const lastActive = a.lastActiveAt ? new Date(a.lastActiveAt) : null;
                   const isStale = lastActive && (new Date().getTime() - lastActive.getTime()) > (48 * 60 * 60 * 1000);
                   const isDivergent = latestEntry && (latestEntry.divergenceIntensity || 0) > 1.5;
+                  const headline = brief?.athleteHeadlines?.[a.id];
 
                   return (
                     <div key={a.id} onClick={() => onViewAthlete(a)} className="p-6 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors group">
@@ -164,9 +173,13 @@ const CoachDashboard: React.FC<any> = ({ coach, athletes, allEntries, unreadMess
                               {isStale && <span className="bg-amber-500 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter">STALE</span>}
                             </div>
                           </div>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-                            {lastActive ? `Active ${lastActive.toLocaleDateString()}` : 'Never Active'}
-                          </p>
+                          {headline ? (
+                            <p className="text-xs font-bold text-rose-500 mt-0.5">{headline}</p>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest mt-0.5">
+                              {lastActive ? `Active ${lastActive.toLocaleDateString()}` : 'Never Active'}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
