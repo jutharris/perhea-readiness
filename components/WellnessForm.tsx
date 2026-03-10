@@ -100,7 +100,7 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
       }
 
       onComplete();
-    } catch (err) {
+    } catch {
       alert("Error saving report.");
     } finally {
       setLoading(false);
