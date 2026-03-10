@@ -314,39 +314,51 @@ export const getDeepAudit = async (entries: WellnessEntry[]): Promise<Intelligen
  * Analyzes squad data for coaching staff using Regime Shift detection.
  */
 export const getCoachDailyBriefing = async (athletes: User[], allEntries: WellnessEntry[]) => {
-  if (athletes.length === 0) return "No athletes in squad.";
+  if (athletes.length === 0) return JSON.stringify({ squadSummary: "No athletes in squad.", athleteHeadlines: {} });
   
   const ai = getAIInstance();
-  if (!ai) return "Squad briefing unavailable.";
+  if (!ai) return JSON.stringify({ squadSummary: "Performance Partner offline.", athleteHeadlines: {} });
   
   const prompt = `
     Act as a Head of Performance. Review the squad's 50-day data window.
-    Identify individuals experiencing "Regime Shifts" (High Turbulence).
+    Identify individuals experiencing "Regime Shifts" (High Turbulence) or needing attention.
     
-    Categorize feedback:
-    - STABLE ADAPTATION: Athletes whose metrics are trending predictably with training load.
-    - REGIME SHIFTS: Athletes whose internal correlation (e.g., Sleep vs. Energy) has decoupled unexpectedly. These are "Early Signals" for intervention.
+    Return ONLY a JSON object with this exact structure (no markdown, no code blocks):
+    {
+      "squadSummary": "A 1-sentence high-level summary of the squad's overall status.",
+      "athleteHeadlines": {
+        "athlete_id_here": "5-word action-oriented headline (e.g., 'High Psychological Load: Deload Required')",
+        // include only athletes that need attention or have notable shifts
+      }
+    }
     
-    Keep it brief, clinical, and actionable. Data: ${JSON.stringify(allEntries.slice(0, 50))}.
+    Data: ${JSON.stringify(allEntries.slice(0, 50))}
+    Athletes: ${JSON.stringify(athletes.map(a => ({ id: a.id, name: a.firstName + ' ' + a.lastName })))}
   `;
 
   try {
     const response = await ai.models.generateContent({ 
       model: "gemini-3.1-pro-preview", 
-      contents: prompt 
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
     });
-    return response.text || "Squad adaptation is stable across all primary vectors.";
+    return response.text || JSON.stringify({ squadSummary: "Squad adaptation is stable across all primary vectors.", athleteHeadlines: {} });
   } catch (error) {
     console.error("Gemini Briefing Error:", error);
     // Fallback to flash
     try {
       const fallbackResponse = await ai.models.generateContent({ 
         model: "gemini-3-flash-preview", 
-        contents: prompt 
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
       });
-      return fallbackResponse.text || "Squad adaptation is stable across all primary vectors.";
+      return fallbackResponse.text || JSON.stringify({ squadSummary: "Squad adaptation is stable across all primary vectors.", athleteHeadlines: {} });
     } catch {
-      return "Manual review of individual turbulence flags recommended.";
+      return JSON.stringify({ squadSummary: "Manual review of individual turbulence flags recommended.", athleteHeadlines: {} });
     }
   }
 };
