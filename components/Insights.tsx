@@ -75,7 +75,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
     };
 
     fetchAnalysis();
-  }, [latestEntryId, entriesCount, role, personalityCalibration, interactionLoading]);
+  }, [latestEntryId, entriesCount, role, personalityCalibration, interactionLoading, entries, user]);
 
   const handleInteraction = async (type: InteractionType | 'MESSAGE_COACH', message?: string) => {
     setInteractionLoading(true);
@@ -100,7 +100,7 @@ const Insights: React.FC<{ entries: WellnessEntry[]; user: User; role?: UserRole
       }
       setShowInput(null);
       setUserInput('');
-    } catch (err) {
+    } catch {
       if (type === 'MESSAGE_COACH') {
         setInteractionResponse("Failed to send message. Please try again.");
       } else {
