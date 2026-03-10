@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 // Added process import to resolve TypeScript error regarding process.cwd()
-import process from 'node:process';
+import process from 'process';
 
 export default defineConfig(({ mode }) => {
   // Use imported process to access cwd() safely in a TypeScript environment
