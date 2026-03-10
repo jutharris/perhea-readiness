@@ -96,7 +96,7 @@ export const fitParserService = {
       const hrAvg = hrValues.length > 0 ? hrValues.reduce((a, b) => a + b, 0) / hrValues.length : null;
       const cadAvg = cadValues.length > 0 ? cadValues.reduce((a, b) => a + b, 0) / cadValues.length : null;
       
-      const splitSec = (end.getTime() - start.getTime()) / 1000;
+      const split_sec = (end.getTime() - start.getTime()) / 1000;
 
       return {
         mile_index: i + 1,
