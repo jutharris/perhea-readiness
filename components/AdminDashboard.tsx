@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { User, SystemCalibration } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { User, SystemCalibration, WellnessEntry } from '../types';
 import { storageService } from '../services/storageService';
 import { 
   Activity, Users, Zap, Shield, 
