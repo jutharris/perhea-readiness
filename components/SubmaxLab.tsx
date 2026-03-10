@@ -8,7 +8,7 @@ interface SubmaxLabProps {
   onNewTest: () => void;
 }
 
-const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
+const SubmaxLab: React.FC<SubmaxLabProps> = ({ tests, onNewTest }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-end mb-8">
@@ -65,7 +65,7 @@ const SubmaxLab: React.FC<SubmaxLabProps> = ({ user, tests, onNewTest }) => {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {tests.map((test, idx) => {
+            {tests.map((test) => {
               const compliance = test.summary?.compliance || 'COMPLIANT';
               const isNonCompliant = compliance === 'NON_COMPLIANT';
               
