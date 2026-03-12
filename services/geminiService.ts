@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { WellnessEntry, User, IntelligencePacket } from "../types";
 
 import { storageService } from "./storageService";
@@ -111,8 +111,7 @@ export const getAthleteAnalysis = async (entries: WellnessEntry[], user: User, c
       model: "gemini-3.1-pro-preview", 
       contents: prompt,
       config: { 
-        systemInstruction,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        systemInstruction
       }
     });
     return response.text || "Metrics are within your adaptive range.";
@@ -203,8 +202,7 @@ export const getAthleteInteraction = async (
       model: "gemini-3.1-pro-preview", 
       contents: prompt,
       config: { 
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
+        responseMimeType: "application/json"
       }
     });
     return response.text || JSON.stringify({ text: "I'm processing your data. Please try again." });
@@ -280,8 +278,7 @@ export const getDeepAudit = async (entries: WellnessEntry[]): Promise<Intelligen
       model: "gemini-3.1-pro-preview",
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }
+        responseMimeType: "application/json"
       }
     });
 
