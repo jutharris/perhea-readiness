@@ -11,6 +11,7 @@ const Dashboard: React.FC<any> = ({ entries, user, onUserUpdate }) => {
   const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchData = async () => {
       const systemCalibration = await storageService.getSystemCalibration();
       setCalibration(systemCalibration);
