@@ -138,6 +138,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeView]);
+
+  useEffect(() => {
     if (user) {
       refreshData(user);
       
