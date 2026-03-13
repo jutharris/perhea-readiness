@@ -28,14 +28,25 @@ export const storageService = {
 
       // Account Healing: If no profile by ID, check by email (in case of re-signup)
       if (error || !initialData) {
+        // If it's a real error (not just "no rows returned"), throw it so we don't accidentally route to onboarding
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error fetching profile:", error);
+          throw error;
+        }
+
         const { data: { user: authUser } } = await supabase!.auth.getUser();
         if (authUser?.email) {
-          const { data: emailProfile } = await supabase!
+          const { data: emailProfile, error: emailError } = await supabase!
             .from('profiles')
             .select('*')
             .eq('email', authUser.email)
             .single();
           
+          if (emailError && emailError.code !== 'PGRST116') {
+            console.error("Error fetching profile by email:", emailError);
+            throw emailError;
+          }
+
           if (emailProfile) {
             // Update the old profile with the new ID
             await supabase!.from('profiles').update({ id: userId }).eq('email', authUser.email);
