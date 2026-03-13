@@ -1,6 +1,6 @@
 
-import { GoogleGenAI } from "@google/genai";
-import { WellnessEntry, User, IntelligencePacket } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { WellnessEntry, User, IntelligencePacket, EducationSnippet } from "../types";
 
 import { storageService } from "./storageService";
 
@@ -11,6 +11,58 @@ const getAIInstance = () => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey || apiKey === 'undefined') return null;
   return new GoogleGenAI({ apiKey });
+};
+
+/**
+ * Generates an array of education snippets based on a theme.
+ */
+export const generateEducationSnippets = async (theme: string): Promise<Omit<EducationSnippet, 'id' | 'createdAt' | 'approved'>[]> => {
+  const ai = getAIInstance();
+  if (!ai) throw new Error("AI offline.");
+
+  const prompt = `You are an elite sports scientist and performance architect. 
+You are generating educational "snippets" for athletes to read in a high-performance app.
+The current theme is: "${theme}".
+
+Generate 5 "PRE_CHECK_IN" snippets. These are single, beautifully typeset sentences that sit above daily check-in sliders. They should be clinical, objective, and educational, often citing general research concepts (e.g., "Hardware measures the physiological cost of yesterday. Your subjective perception dictates the capacity for today.").
+
+Generate 5 "PHILOSOPHY" snippets, one for each of the following Regimes: BUILD, ADAPT, RESTORATION, CAUTION, CALIBRATING. These are profound, grounding, premium quotes shown after submitting a check-in.
+
+Return a JSON array of objects. Each object must have:
+- type: "PRE_CHECK_IN" or "PHILOSOPHY"
+- regime: (Only if type is PHILOSOPHY) "BUILD", "ADAPT", "RESTORATION", "CAUTION", or "CALIBRATING"
+- content: The actual text of the snippet
+- theme: "${theme}"`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.1-pro-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING },
+            regime: { type: Type.STRING },
+            content: { type: Type.STRING },
+            theme: { type: Type.STRING }
+          },
+          required: ["type", "content", "theme"]
+        }
+      }
+    }
+  });
+
+  const text = response.text || "[]";
+  try {
+    const parsed = JSON.parse(text);
+    return parsed;
+  } catch (e) {
+    console.error("Failed to parse snippets", e);
+    return [];
+  }
 };
 
 /**
