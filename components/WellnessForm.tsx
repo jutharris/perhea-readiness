@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SliderQuestion from './SliderQuestion';
 import { storageService } from '../services/storageService';
 import { getDeepAudit } from '../services/geminiService';
 import { SessionType, PlannedMissionType, WellnessEntry, User } from '../types';
+import { PRE_CHECK_IN_PRIMES, POST_SUBMIT_SEQUENCE, REGIME_PHILOSOPHIES } from '../constants/education';
 
 const MISSION_BENCHMARKS: Record<PlannedMissionType, number> = {
   RECOVERY: 1.5,
@@ -33,6 +34,16 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
     comments: '' 
   });
   const [loading, setLoading] = useState(false);
+  const [postSubmitState, setPostSubmitState] = useState<'idle' | 'rapid' | 'philosophy'>('idle');
+  const [postSubmitStep, setPostSubmitStep] = useState(0);
+  const [philosophyQuote, setPhilosophyQuote] = useState('');
+  const [educationSnippets, setEducationSnippets] = useState<EducationSnippet[]>([]);
+
+  useEffect(() => {
+    storageService.getEducationSnippets().then(snippets => {
+      setEducationSnippets(snippets.filter(s => s.approved));
+    });
+  }, []);
 
   const PRIMES = [
     {
@@ -99,10 +110,47 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
         });
       }
 
-      onComplete();
+      // Determine post-submit sequence
+      const newEntryCount = entries.length + 1;
+      const isPhilosophyDay = newEntryCount > 0 && newEntryCount % 3 === 0;
+      
+      if (isPhilosophyDay) {
+        const regime = user.intelligencePacket?.regime || 'CALIBRATING';
+        
+        // Try to get a custom snippet first
+        const customSnippets = educationSnippets.filter(s => s.type === 'PHILOSOPHY' && s.regime === regime);
+        let randomQuote = '';
+        
+        if (customSnippets.length > 0) {
+          randomQuote = customSnippets[Math.floor(Math.random() * customSnippets.length)].content;
+        } else {
+          // Fallback to hardcoded
+          const quotes = REGIME_PHILOSOPHIES[regime] || REGIME_PHILOSOPHIES['CALIBRATING'];
+          randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+        }
+        
+        setPhilosophyQuote(randomQuote);
+        setPostSubmitState('philosophy');
+        
+        setTimeout(() => {
+          onComplete();
+        }, 4000);
+      } else {
+        setPostSubmitState('rapid');
+        let step = 0;
+        const interval = setInterval(() => {
+          step++;
+          if (step >= POST_SUBMIT_SEQUENCE.length) {
+            clearInterval(interval);
+            onComplete();
+          } else {
+            setPostSubmitStep(step);
+          }
+        }, 800);
+      }
+
     } catch {
       alert("Error saving report.");
-    } finally {
       setLoading(false);
     }
   };
@@ -128,6 +176,39 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
       </div>
     </div>
   );
+
+  if (postSubmitState === 'rapid') {
+    return (
+      <div className="max-w-md mx-auto min-h-[70vh] flex flex-col items-center justify-center px-6 py-12 animate-in fade-in duration-500">
+        <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-8"></div>
+        <div className="h-8 relative w-full flex justify-center">
+          {POST_SUBMIT_SEQUENCE.map((text, i) => (
+            <p 
+              key={i}
+              className={`absolute text-sm font-black uppercase tracking-widest text-slate-600 transition-all duration-300 ${
+                postSubmitStep === i ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'
+              }`}
+            >
+              {text}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (postSubmitState === 'philosophy') {
+    return (
+      <div className="max-w-md mx-auto min-h-[70vh] flex flex-col items-center justify-center px-8 py-12 animate-in fade-in duration-1000">
+        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-8">
+          <div className="w-3 h-3 bg-indigo-600 rounded-full animate-pulse"></div>
+        </div>
+        <p className="text-2xl font-medium text-slate-900 text-center leading-relaxed italic">
+          "{philosophyQuote}"
+        </p>
+      </div>
+    );
+  }
 
   if (showPrime && currentPrime) {
     return (
@@ -157,12 +238,33 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
     );
   }
 
+  const showPreCheckInMessage = entries.length >= 7 && entries.length % 2 === 0;
+  
+  // Try to get a custom snippet first
+  const customPreCheckInSnippets = educationSnippets.filter(s => s.type === 'PRE_CHECK_IN');
+  let preCheckInQuote = '';
+  
+  if (customPreCheckInSnippets.length > 0) {
+    preCheckInQuote = customPreCheckInSnippets[entries.length % customPreCheckInSnippets.length].content;
+  } else {
+    // Fallback to hardcoded
+    preCheckInQuote = PRE_CHECK_IN_PRIMES[entries.length % PRE_CHECK_IN_PRIMES.length];
+  }
+
   return (
     <form onSubmit={submit} className="max-w-md mx-auto space-y-6 pb-20">
       <div className="text-center space-y-2 mb-10">
         <h2 className="text-3xl font-black text-slate-900 italic uppercase">Daily Wellness Audit</h2>
         <p className="text-sm font-bold text-slate-400">Biological Readiness Protocol</p>
       </div>
+
+      {showPreCheckInMessage && (
+        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4">
+          <p className="text-sm font-medium text-slate-600 italic leading-relaxed text-center">
+            "{preCheckInQuote}"
+          </p>
+        </div>
+      )}
 
       {/* 0. Day Plan & Wearable Score */}
       <div className="space-y-4">
