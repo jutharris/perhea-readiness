@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { WellnessEntry, User, IntelligencePacket, SystemCalibration } from '../types';
 import { storageService } from '../services/storageService';
 import { 
@@ -130,42 +131,74 @@ const Sparkline: React.FC<{
   );
 };
 
-const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket }> = ({ packet }) => {
+const BiologicalIdentity: React.FC<{ packet?: IntelligencePacket; daysLogged: number }> = ({ packet, daysLogged }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   if (!packet || !packet.laws) return null;
   
   const sortedLaws = [...packet.laws].sort((a, b) => a.horizon - b.horizon);
 
   return (
     <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
-      <div className="flex items-center gap-2">
-        <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse"></div>
-        <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Biological Identity (50-Day Holy Grail)</h3>
+      <div 
+        className="flex items-center justify-between cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-indigo-500 rounded-full animate-pulse"></div>
+          <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Biological Identity (50-Day Holy Grail)</h3>
+        </div>
+        <button className="text-slate-400 hover:text-white transition-colors">
+          {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {sortedLaws.map(law => (
-          <div key={law.horizon} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{law.horizon}-Day {law.horizon === 50 ? 'Identity' : law.horizon === 28 ? 'Signature' : law.horizon === 14 ? 'Adaptation' : 'Vibe'}</span>
-              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
-                law.status === 'STABLE' ? 'bg-emerald-500/10 text-emerald-400' : 
-                law.status === 'TURBULENT' ? 'bg-rose-500/10 text-rose-400' : 
-                'bg-indigo-500/10 text-indigo-400'
-              }`}>{law.status}</span>
-            </div>
-            <ul className="space-y-1">
-              {law.laws.map((l, i) => (
-                <li key={i} className="text-xs font-medium text-slate-300 leading-relaxed">• {l}</li>
-              ))}
-            </ul>
+      {isExpanded && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sortedLaws.map(law => {
+              const isLocked = daysLogged < law.horizon;
+              return (
+                <div key={law.horizon} className={`p-4 rounded-2xl border space-y-2 ${isLocked ? 'bg-white/5 border-white/5 opacity-60' : 'bg-white/5 border-white/10'}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{law.horizon}-Day {law.horizon === 50 ? 'Identity' : law.horizon === 28 ? 'Signature' : law.horizon === 14 ? 'Adaptation' : 'Vibe'}</span>
+                    {!isLocked && (
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                        law.status === 'STABLE' ? 'bg-emerald-500/10 text-emerald-400' : 
+                        law.status === 'TURBULENT' ? 'bg-rose-500/10 text-rose-400' : 
+                        'bg-indigo-500/10 text-indigo-400'
+                      }`}>{law.status}</span>
+                    )}
+                    {isLocked && (
+                      <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest bg-slate-800 text-slate-500">
+                        <Lock size={10} className="inline mr-1" /> Locked
+                      </span>
+                    )}
+                  </div>
+                  {isLocked ? (
+                    <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
+                      <Lock size={24} className="text-slate-600" />
+                      <p className="text-xs font-medium text-slate-400">
+                        Gathering data... {law.horizon - daysLogged} days until unlock.
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-1">
+                      {law.laws.map((l, i) => (
+                        <li key={i} className="text-xs font-medium text-slate-300 leading-relaxed">• {l}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-      
-      {packet.lastDeepAudit && (
-        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
-          Last Deep Audit: {new Date(packet.lastDeepAudit).toLocaleDateString()}
-        </p>
+          
+          {packet.lastDeepAudit && (
+            <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
+              Last Deep Audit: {new Date(packet.lastDeepAudit).toLocaleDateString()}
+            </p>
+          )}
+        </>
       )}
     </div>
   );
@@ -267,7 +300,7 @@ const Trends: React.FC<TrendsProps> = ({ entries = [], user }) => {
         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">14-Day System Trajectory</p>
       </div>
 
-      <BiologicalIdentity packet={user.intelligencePacket} />
+      <BiologicalIdentity packet={user.intelligencePacket} daysLogged={new Set(entries.map(e => e.isoDate)).size} />
 
       {/* sRPE Bar Chart - The Load Foundation */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
