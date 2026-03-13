@@ -1,6 +1,6 @@
 
 import { supabase } from './supabaseClient';
-import { User, WellnessEntry, UserRole, Regime, SubmaxTest, SystemCalibration, PersonalityCalibration, TrainingFocus, Message } from '../types';
+import { User, WellnessEntry, UserRole, Regime, SubmaxTest, SystemCalibration, PersonalityCalibration, TrainingFocus, Message, EducationSnippet } from '../types';
 
 const DEFAULT_CALIBRATION: SystemCalibration = {
   volatilityThreshold: 1.2,
@@ -14,6 +14,82 @@ const checkConfig = () => {
 };
 
 export const storageService = {
+  // Education Snippets
+  getEducationSnippets: async (): Promise<EducationSnippet[]> => {
+    checkConfig();
+    const { data, error } = await supabase!
+      .from('education_snippets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching education snippets:", error);
+      return [];
+    }
+    
+    return data.map(d => ({
+      id: d.id,
+      type: d.type,
+      regime: d.regime,
+      content: d.content,
+      theme: d.theme,
+      approved: d.approved,
+      createdAt: d.created_at
+    }));
+  },
+
+  saveEducationSnippets: async (snippets: Omit<EducationSnippet, 'id' | 'createdAt'>[]): Promise<void> => {
+    checkConfig();
+    const payload = snippets.map(s => ({
+      type: s.type,
+      regime: s.regime,
+      content: s.content,
+      theme: s.theme,
+      approved: s.approved
+    }));
+
+    const { error } = await supabase!
+      .from('education_snippets')
+      .insert(payload);
+
+    if (error) {
+      console.error("Error saving education snippets:", error);
+      throw error;
+    }
+  },
+
+  updateEducationSnippet: async (id: string, updates: Partial<EducationSnippet>): Promise<void> => {
+    checkConfig();
+    const payload: any = {};
+    if (updates.content !== undefined) payload.content = updates.content;
+    if (updates.approved !== undefined) payload.approved = updates.approved;
+    if (updates.theme !== undefined) payload.theme = updates.theme;
+    if (updates.regime !== undefined) payload.regime = updates.regime;
+
+    const { error } = await supabase!
+      .from('education_snippets')
+      .update(payload)
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error updating snippet:", error);
+      throw error;
+    }
+  },
+
+  deleteEducationSnippet: async (id: string): Promise<void> => {
+    checkConfig();
+    const { error } = await supabase!
+      .from('education_snippets')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting snippet:", error);
+      throw error;
+    }
+  },
+
   // Purely fetches the profile from DB
   getProfile: async (userId: string): Promise<User | null> => {
     checkConfig();
