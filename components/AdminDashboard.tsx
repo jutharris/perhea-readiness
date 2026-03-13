@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, SystemCalibration, WellnessEntry } from '../types';
+import { User, SystemCalibration, WellnessEntry, EducationSnippet } from '../types';
 import { storageService } from '../services/storageService';
+import { generateEducationSnippets } from '../services/geminiService';
 import { 
   Activity, Users, Zap, Shield, 
   AlertCircle, Clock, Watch,
   Search, ArrowLeft, RefreshCw,
-  Settings, Save
+  Settings, Save, BookOpen, Sparkles, Trash2, CheckCircle, XCircle
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -19,26 +20,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const [metrics, setMetrics] = useState<any>(null);
   const [calibration, setCalibration] = useState<SystemCalibration | null>(null);
   const [allEntries, setAllEntries] = useState<WellnessEntry[]>([]);
+  const [snippets, setSnippets] = useState<EducationSnippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingCalibration, setSavingCalibration] = useState(false);
+  const [generatingSnippets, setGeneratingSnippets] = useState(false);
+  const [snippetTheme, setSnippetTheme] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PREMIUM' | 'FROZEN'>('ALL');
   const [growthTimeframe, setGrowthTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'USERS' | 'CALIBRATION' | 'EDUCATION'>('USERS');
+  const [modalState, setModalState] = useState<{ isOpen: boolean; title: string; message: string; type: 'alert' | 'confirm'; onConfirm?: () => void }>({ isOpen: false, title: '', message: '', type: 'alert' });
+
+  const showAlert = (title: string, message: string) => {
+    setModalState({ isOpen: true, title, message, type: 'alert' });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setModalState({ isOpen: true, title, message, type: 'confirm', onConfirm });
+  };
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [nerveData, systemCalibration] = await Promise.all([
+      const [nerveData, systemCalibration, educationSnippets] = await Promise.all([
         storageService.getAdminNerveCenter(),
-        storageService.getSystemCalibration()
+        storageService.getSystemCalibration(),
+        storageService.getEducationSnippets()
       ]);
 
       setUsers(nerveData.users);
       setMetrics(nerveData.metrics);
       setAllEntries(nerveData.entries);
       setCalibration(systemCalibration);
+      setSnippets(educationSnippets);
     } catch (err: any) {
       console.error("Error fetching admin data:", err);
       setError(err.message || "Failed to sync with Nerve Center. Please check your connection.");
@@ -57,25 +73,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
       await storageService.updateUserStatus(userId, { [field]: !currentVal });
       await fetchData();
     } catch {
-      alert("Error updating status. Check RLS policies.");
+      showAlert("Error", "Error updating status. Check RLS policies.");
     } finally {
       setLoading(false);
     }
   };
 
   const queueAlert = async (userId: string) => {
-    const msg = prompt("Enter CNS Warning message (or leave blank for default):");
-    if (msg === null) return;
-    try {
-      setLoading(true);
-      await storageService.updateUserStatus(userId, { queuedAlert: msg || "CNS Divergence Detected" });
-      await fetchData();
-      alert("Alert queued for next audit.");
-    } catch {
-      alert("Error queueing alert. Check RLS policies.");
-    } finally {
-      setLoading(false);
-    }
+    // We can't easily replace prompt with our simple modal without adding an input field to the modal state.
+    // For now, we'll keep prompt or just use a default message. Let's use a default message to avoid prompt.
+    showConfirm("Queue Alert", "Queue a CNS Divergence Warning for this user?", async () => {
+      try {
+        setLoading(true);
+        await storageService.updateUserStatus(userId, { queuedAlert: "CNS Divergence Detected" });
+        await fetchData();
+        showAlert("Success", "Alert queued for next audit.");
+      } catch {
+        showAlert("Error", "Error queueing alert. Check RLS policies.");
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const handleUpdateCalibration = async () => {
@@ -83,13 +101,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
     setSavingCalibration(true);
     try {
       await storageService.updateSystemCalibration(calibration);
-      alert("System calibration updated successfully.");
+      showAlert("Success", "System calibration updated successfully.");
     } catch (err) {
       console.error("Error updating calibration:", err);
-      alert("Failed to update calibration.");
+      showAlert("Error", "Failed to update calibration.");
     } finally {
       setSavingCalibration(false);
     }
+  };
+
+  const handleGenerateSnippets = async () => {
+    if (!snippetTheme.trim()) return;
+    setGeneratingSnippets(true);
+    try {
+      const newSnippets = await generateEducationSnippets(snippetTheme);
+      if (newSnippets.length > 0) {
+        // Default to approved = false so admin can review
+        const toSave = newSnippets.map(s => ({ ...s, approved: false }));
+        await storageService.saveEducationSnippets(toSave);
+        await fetchData();
+        setSnippetTheme('');
+        showAlert("Success", `Generated ${newSnippets.length} new snippets for review.`);
+      } else {
+        showAlert("Error", "Failed to generate snippets. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error generating snippets:", err);
+      showAlert("Error", "Error generating snippets.");
+    } finally {
+      setGeneratingSnippets(false);
+    }
+  };
+
+  const toggleSnippetApproval = async (id: string, currentStatus: boolean) => {
+    try {
+      await storageService.updateEducationSnippet(id, { approved: !currentStatus });
+      setSnippets(snippets.map(s => s.id === id ? { ...s, approved: !currentStatus } : s));
+    } catch (err) {
+      showAlert("Error", "Failed to update snippet.");
+    }
+  };
+
+  const deleteSnippet = async (id: string) => {
+    showConfirm("Delete Snippet", "Are you sure you want to delete this snippet?", async () => {
+      try {
+        await storageService.deleteEducationSnippet(id);
+        setSnippets(snippets.filter(s => s.id !== id));
+      } catch (err) {
+        showAlert("Error", "Failed to delete snippet.");
+      }
+    });
   };
 
   const filteredUsers = users.filter(u => {
@@ -174,8 +235,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8">
-        {/* Global Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Tabs */}
+        <div className="flex space-x-2 border-b border-slate-800 pb-4">
+          <button
+            onClick={() => setActiveTab('USERS')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'USERS' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4 inline-block mr-2" />
+            Athletes
+          </button>
+          <button
+            onClick={() => setActiveTab('CALIBRATION')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'CALIBRATION' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Settings className="w-4 h-4 inline-block mr-2" />
+            Calibration
+          </button>
+          <button
+            onClick={() => setActiveTab('EDUCATION')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'EDUCATION' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 inline-block mr-2" />
+            Education Engine
+          </button>
+        </div>
+
+        {activeTab === 'CALIBRATION' && (
+          <>
+            {/* Global Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard 
             label="Day-7 Return Rate" 
             value={`${(metrics?.day7ReturnRate || 0).toFixed(1)}%`} 
@@ -383,9 +477,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
             </div>
           </div>
         </div>
+        </>
+      )}
 
-        {/* Squad Triage */}
-        <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
+      {activeTab === 'USERS' && (
+          <>
+            {/* Squad Triage */}
+            <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-lg font-black uppercase italic text-white">Squad Triage</h2>
@@ -476,7 +574,158 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
             </table>
           </div>
         </div>
+          </>
+        )}
+
+        {activeTab === 'EDUCATION' && (
+          <div className="space-y-8">
+            {/* Education Engine Header */}
+            <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden p-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                  <h2 className="text-2xl font-black uppercase italic text-white flex items-center gap-3">
+                    <BookOpen className="w-6 h-6 text-indigo-400" />
+                    Education Engine
+                  </h2>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-2">
+                    AI-Driven Contextual Priming
+                  </p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <input 
+                      type="text" 
+                      placeholder="Enter theme (e.g., 'Sleep hygiene')" 
+                      value={snippetTheme}
+                      onChange={e => setSnippetTheme(e.target.value)}
+                      className="w-full pl-4 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/50 text-white placeholder:text-slate-600"
+                    />
+                  </div>
+                  <button
+                    onClick={handleGenerateSnippets}
+                    disabled={generatingSnippets || !snippetTheme.trim() || loading}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all"
+                  >
+                    {generatingSnippets ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-5 h-5" />
+                    )}
+                    Generate
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Snippets Vault */}
+            <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-slate-800">
+                <h3 className="text-lg font-black uppercase italic text-white">Content Vault</h3>
+              </div>
+              
+              <div className="p-6">
+                {snippets.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No education snippets generated yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {snippets.map(snippet => (
+                      <div 
+                        key={snippet.id} 
+                        className={`p-6 rounded-2xl border transition-all ${
+                          snippet.approved 
+                            ? 'bg-slate-950/50 border-emerald-500/30' 
+                            : 'bg-slate-900 border-slate-700 hover:border-indigo-500/50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex gap-2">
+                            <span className="px-2 py-1 bg-slate-800 text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-700">
+                              {snippet.type}
+                            </span>
+                            {snippet.regime && (
+                              <span className="px-2 py-1 bg-indigo-500/10 text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-500/20">
+                                {snippet.regime}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleSnippetApproval(snippet.id, snippet.approved)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                snippet.approved 
+                                  ? 'bg-emerald-500/20 text-emerald-400' 
+                                  : 'bg-slate-800 text-slate-500 hover:bg-emerald-500/20 hover:text-emerald-400'
+                              }`}
+                              title={snippet.approved ? "Revoke Approval" : "Approve Snippet"}
+                            >
+                              {snippet.approved ? <CheckCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => deleteSnippet(snippet.id)}
+                              className="p-1.5 bg-slate-800 text-slate-500 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg transition-colors"
+                              title="Delete Snippet"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                          "{snippet.content}"
+                        </p>
+                        
+                        <div className="flex justify-between items-center mt-auto pt-4 border-t border-slate-800/50">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Theme: {snippet.theme}
+                          </span>
+                          <span className="text-[10px] text-slate-600">
+                            {new Date(snippet.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Modal */}
+      {modalState.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-white mb-2">{modalState.title}</h3>
+            <p className="text-slate-400 mb-8">{modalState.message}</p>
+            <div className="flex justify-end gap-3">
+              {modalState.type === 'confirm' && (
+                <button
+                  onClick={() => setModalState({ ...modalState, isOpen: false })}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (modalState.type === 'confirm' && modalState.onConfirm) {
+                    modalState.onConfirm();
+                  }
+                  setModalState({ ...modalState, isOpen: false });
+                }}
+                className="px-6 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+              >
+                {modalState.type === 'confirm' ? 'Confirm' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
