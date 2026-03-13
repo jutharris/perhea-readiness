@@ -45,7 +45,14 @@ const Sparkline: React.FC<{
     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-40">
       <div className="flex justify-between items-start mb-2">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-        <span className={`text-sm font-black ${isHighlighted ? 'text-indigo-600' : 'text-slate-900'}`}>{currentVal}</span>
+        <div className="flex flex-col items-end">
+          <span className={`text-sm font-black ${isHighlighted ? 'text-indigo-600' : 'text-slate-900'}`}>{currentVal}</span>
+          {stats && stats.mean !== undefined && stats.stdDev !== undefined && (
+            <span className="text-[9px] font-medium text-slate-400 mt-0.5">
+              Avg: {stats.mean.toFixed(1)} | Normal: {Math.max(0, stats.mean - stats.stdDev).toFixed(1)} - {Math.min(yDomain[1], stats.mean + stats.stdDev).toFixed(1)}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex-1 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
