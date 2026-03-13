@@ -48,7 +48,7 @@ const Sparkline: React.FC<{
         <div className="flex flex-col items-end">
           <span className={`text-sm font-black ${isHighlighted ? 'text-indigo-600' : 'text-slate-900'}`}>{currentVal}</span>
           {stats && stats.mean !== undefined && stats.stdDev !== undefined && (
-            <span className="text-[9px] font-medium text-slate-400 mt-0.5">
+            <span className="text-[9px] font-medium text-slate-500 mt-0.5">
               Avg: {stats.mean.toFixed(1)} | Normal: {Math.max(0, stats.mean - stats.stdDev).toFixed(1)} - {Math.min(yDomain[1], stats.mean + stats.stdDev).toFixed(1)}
             </span>
           )}
