@@ -42,12 +42,12 @@ const Sparkline: React.FC<{
 
   const normalData = useMemo(() => {
     if (inflectionIndex === -1) return data;
-    return data.map((d, i) => i <= inflectionIndex ? d : { ...d, [metricKey]: null });
+    return data.map((d, i) => i <= inflectionIndex ? d : { ...d, [metricKey]: undefined });
   }, [data, inflectionIndex, metricKey]);
 
   const highlightedData = useMemo(() => {
     if (inflectionIndex === -1) return [];
-    return data.map((d, i) => i >= inflectionIndex ? d : { ...d, [metricKey]: null });
+    return data.map((d, i) => i >= inflectionIndex ? d : { ...d, [metricKey]: undefined });
   }, [data, inflectionIndex, metricKey]);
 
   const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7] as [number, number];
