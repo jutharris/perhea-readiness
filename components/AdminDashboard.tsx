@@ -7,7 +7,7 @@ import {
   Activity, Users, Zap, Shield, 
   AlertCircle, Clock, Watch,
   Search, ArrowLeft, RefreshCw,
-  Settings, Save, BookOpen, Sparkles, Trash2, CheckCircle, XCircle
+  Settings, Save, BookOpen, Sparkles, Trash2, CheckCircle, XCircle, Edit2
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -24,7 +24,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
   const [loading, setLoading] = useState(true);
   const [savingCalibration, setSavingCalibration] = useState(false);
   const [generatingSnippets, setGeneratingSnippets] = useState(false);
+  const [suggestingTopics, setSuggestingTopics] = useState(false);
   const [snippetTheme, setSnippetTheme] = useState('');
+  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
+  const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
+  const [editingSnippetContent, setEditingSnippetContent] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PREMIUM' | 'FROZEN'>('ALL');
   const [growthTimeframe, setGrowthTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('week');
@@ -55,6 +59,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
       setAllEntries(nerveData.entries);
       setCalibration(systemCalibration);
       setSnippets(educationSnippets);
+      
+      // Check for 14-day auto-generation
+      if (educationSnippets.length > 0) {
+        const latestSnippet = educationSnippets.reduce((latest, current) => {
+          return new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest;
+        }, educationSnippets[0]);
+
+        const daysSinceLastGeneration = (new Date().getTime() - new Date(latestSnippet.createdAt).getTime()) / (1000 * 3600 * 24);
+
+        if (daysSinceLastGeneration >= 14) {
+          try {
+            setGeneratingSnippets(true);
+            const currentTopics = Array.from(new Set(educationSnippets.map(s => s.theme)));
+            const { suggestEducationTopics } = await import('../services/geminiService');
+            const newTopics = await suggestEducationTopics(currentTopics);
+            
+            if (newTopics.length > 0) {
+              const themeToGenerate = newTopics[0];
+              const newSnippets = await generateEducationSnippets(themeToGenerate);
+              if (newSnippets.length > 0) {
+                const toSave = newSnippets.map(s => ({ ...s, approved: false }));
+                await storageService.saveEducationSnippets(toSave);
+                showAlert("Auto-Generation Complete", `It has been 14 days. Automatically generated ${newSnippets.length} new snippets for theme: "${themeToGenerate}".`);
+                const updatedSnippets = await storageService.getEducationSnippets();
+                setSnippets(updatedSnippets);
+              }
+            }
+          } catch (err) {
+            console.error("Error auto-generating snippets:", err);
+          } finally {
+            setGeneratingSnippets(false);
+          }
+        }
+      }
     } catch (err: any) {
       console.error("Error fetching admin data:", err);
       setError(err.message || "Failed to sync with Nerve Center. Please check your connection.");
@@ -133,12 +171,53 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
     }
   };
 
+  const handleSuggestTopics = async () => {
+    setSuggestingTopics(true);
+    try {
+      const currentTopics = Array.from(new Set(snippets.map(s => s.theme)));
+      const { suggestEducationTopics } = await import('../services/geminiService');
+      const newTopics = await suggestEducationTopics(currentTopics);
+      if (newTopics.length > 0) {
+        setSuggestedTopics(newTopics);
+      } else {
+        showAlert("Error", "Failed to suggest topics. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error suggesting topics:", err);
+      showAlert("Error", "Error suggesting topics.");
+    } finally {
+      setSuggestingTopics(false);
+    }
+  };
+
   const toggleSnippetApproval = async (id: string, currentStatus: boolean) => {
     try {
       await storageService.updateEducationSnippet(id, { approved: !currentStatus });
       setSnippets(snippets.map(s => s.id === id ? { ...s, approved: !currentStatus } : s));
     } catch (err) {
       showAlert("Error", "Failed to update snippet.");
+    }
+  };
+
+  const startEditingSnippet = (snippet: EducationSnippet) => {
+    setEditingSnippetId(snippet.id);
+    setEditingSnippetContent(snippet.content);
+  };
+
+  const cancelEditingSnippet = () => {
+    setEditingSnippetId(null);
+    setEditingSnippetContent('');
+  };
+
+  const saveSnippetEdit = async (id: string) => {
+    if (!editingSnippetContent.trim()) return;
+    try {
+      await storageService.updateEducationSnippet(id, { content: editingSnippetContent });
+      setSnippets(snippets.map(s => s.id === id ? { ...s, content: editingSnippetContent } : s));
+      setEditingSnippetId(null);
+      setEditingSnippetContent('');
+    } catch (err) {
+      showAlert("Error", "Failed to save snippet edit.");
     }
   };
 
@@ -614,8 +693,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                     )}
                     Generate
                   </button>
+                  <button
+                    onClick={handleSuggestTopics}
+                    disabled={suggestingTopics || loading}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800/50 disabled:text-slate-500 text-white text-sm font-black uppercase tracking-widest rounded-xl transition-all"
+                  >
+                    {suggestingTopics ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-5 h-5" />
+                    )}
+                    Suggest Topics
+                  </button>
                 </div>
               </div>
+              
+              {suggestedTopics.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-slate-800">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Suggested Topics</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {suggestedTopics.map((topic, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSnippetTheme(topic)}
+                        className="px-4 py-2 bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-300 text-xs font-bold rounded-lg transition-colors border border-slate-700 hover:border-indigo-500"
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Snippets Vault */}
@@ -654,6 +762,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                           </div>
                           <div className="flex gap-2">
                             <button
+                              onClick={() => editingSnippetId === snippet.id ? cancelEditingSnippet() : startEditingSnippet(snippet)}
+                              className="p-1.5 bg-slate-800 text-slate-500 hover:bg-indigo-500/20 hover:text-indigo-400 rounded-lg transition-colors"
+                              title={editingSnippetId === snippet.id ? "Cancel Edit" : "Edit Snippet"}
+                            >
+                              {editingSnippetId === snippet.id ? <XCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                            </button>
+                            <button
                               onClick={() => toggleSnippetApproval(snippet.id, snippet.approved)}
                               className={`p-1.5 rounded-lg transition-colors ${
                                 snippet.approved 
@@ -674,17 +789,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onOpenCreatorLa
                           </div>
                         </div>
                         
-                        <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                          "{snippet.content}"
-                        </p>
+                        {editingSnippetId === snippet.id ? (
+                          <div className="mb-4 space-y-3">
+                            <textarea
+                              value={editingSnippetContent}
+                              onChange={(e) => setEditingSnippetContent(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-300 focus:border-indigo-500 outline-none resize-none h-32"
+                            />
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => saveSnippetEdit(snippet.id)}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
+                              >
+                                <Save className="w-3 h-3" />
+                                Save Changes
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                            "{snippet.content}"
+                          </p>
+                        )}
                         
                         <div className="flex justify-between items-center mt-auto pt-4 border-t border-slate-800/50">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             Theme: {snippet.theme}
                           </span>
-                          <span className="text-[10px] text-slate-600">
-                            {new Date(snippet.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex gap-3 text-[10px] text-slate-500 font-bold">
+                            <span className="flex items-center gap-1">
+                              <span className="text-emerald-400">♥</span> {snippet.likes || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="text-rose-400">✕</span> {snippet.passes || 0}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
