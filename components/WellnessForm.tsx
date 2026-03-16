@@ -36,6 +36,7 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
   const [loading, setLoading] = useState(false);
   const [postSubmitState, setPostSubmitState] = useState<'idle' | 'rapid' | 'philosophy'>('idle');
   const [postSubmitStep, setPostSubmitStep] = useState(0);
+  const [philosophySnippet, setPhilosophySnippet] = useState<EducationSnippet | null>(null);
   const [philosophyQuote, setPhilosophyQuote] = useState('');
   const [educationSnippets, setEducationSnippets] = useState<EducationSnippet[]>([]);
 
@@ -122,7 +123,9 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
         let randomQuote = '';
         
         if (customSnippets.length > 0) {
-          randomQuote = customSnippets[Math.floor(Math.random() * customSnippets.length)].content;
+          const snippet = customSnippets[Math.floor(Math.random() * customSnippets.length)];
+          setPhilosophySnippet(snippet);
+          randomQuote = snippet.content;
         } else {
           // Fallback to hardcoded
           const quotes = REGIME_PHILOSOPHIES[regime] || REGIME_PHILOSOPHIES['CALIBRATING'];
@@ -134,7 +137,7 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
         
         setTimeout(() => {
           onComplete();
-        }, 4000);
+        }, 6000); // Increased time slightly to allow for interaction
       } else {
         setPostSubmitState('rapid');
         let step = 0;
@@ -199,13 +202,36 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
 
   if (postSubmitState === 'philosophy') {
     return (
-      <div className="max-w-md mx-auto min-h-[70vh] flex flex-col items-center justify-center px-8 py-12 animate-in fade-in duration-1000">
+      <div className="max-w-md mx-auto min-h-[70vh] flex flex-col items-center justify-center px-8 py-12 animate-in fade-in duration-1000 relative group">
         <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-8">
           <div className="w-3 h-3 bg-indigo-600 rounded-full animate-pulse"></div>
         </div>
         <p className="text-2xl font-medium text-slate-900 text-center leading-relaxed italic">
           "{philosophyQuote}"
         </p>
+        {philosophySnippet && (
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-4 py-2 rounded-full shadow-lg border border-slate-100 z-50">
+            <button
+              type="button"
+              onClick={() => handleSnippetInteraction(philosophySnippet.id, 'like')}
+              className={`p-2 rounded-full transition-colors ${philosophySnippet.likedBy?.includes(user.id) ? 'text-emerald-500 bg-emerald-50' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-50'}`}
+            >
+              <svg className="w-5 h-5" fill={philosophySnippet.likedBy?.includes(user.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+            <div className="w-px bg-slate-200"></div>
+            <button
+              type="button"
+              onClick={() => handleSnippetInteraction(philosophySnippet.id, 'pass')}
+              className={`p-2 rounded-full transition-colors ${philosophySnippet.passedBy?.includes(user.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -242,14 +268,56 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
   
   // Try to get a custom snippet first
   const customPreCheckInSnippets = educationSnippets.filter(s => s.type === 'PRE_CHECK_IN');
+  let preCheckInSnippet: EducationSnippet | null = null;
   let preCheckInQuote = '';
   
   if (customPreCheckInSnippets.length > 0) {
-    preCheckInQuote = customPreCheckInSnippets[entries.length % customPreCheckInSnippets.length].content;
+    preCheckInSnippet = customPreCheckInSnippets[entries.length % customPreCheckInSnippets.length];
+    preCheckInQuote = preCheckInSnippet.content;
   } else {
     // Fallback to hardcoded
     preCheckInQuote = PRE_CHECK_IN_PRIMES[entries.length % PRE_CHECK_IN_PRIMES.length];
   }
+
+  const handleSnippetInteraction = async (snippetId: string, action: 'like' | 'pass') => {
+    try {
+      await storageService.interactWithSnippet(snippetId, user.id, action);
+      // Optimistically update local state
+      setEducationSnippets(prev => prev.map(s => {
+        if (s.id === snippetId) {
+          const isLike = action === 'like';
+          const hasLiked = s.likedBy?.includes(user.id);
+          const hasPassed = s.passedBy?.includes(user.id);
+          
+          let newLikes = s.likes || 0;
+          let newPasses = s.passes || 0;
+          let newLikedBy = [...(s.likedBy || [])];
+          let newPassedBy = [...(s.passedBy || [])];
+
+          if (isLike && !hasLiked) {
+            newLikes++;
+            newLikedBy.push(user.id);
+            if (hasPassed) {
+              newPasses--;
+              newPassedBy = newPassedBy.filter(id => id !== user.id);
+            }
+          } else if (!isLike && !hasPassed) {
+            newPasses++;
+            newPassedBy.push(user.id);
+            if (hasLiked) {
+              newLikes--;
+              newLikedBy = newLikedBy.filter(id => id !== user.id);
+            }
+          }
+
+          return { ...s, likes: newLikes, passes: newPasses, likedBy: newLikedBy, passedBy: newPassedBy };
+        }
+        return s;
+      }));
+    } catch (err) {
+      console.error("Failed to interact with snippet", err);
+    }
+  };
 
   return (
     <form onSubmit={submit} className="max-w-md mx-auto space-y-6 pb-20">
@@ -259,10 +327,33 @@ const WellnessForm: React.FC<{ user: User; entries: WellnessEntry[]; onComplete:
       </div>
 
       {showPreCheckInMessage && (
-        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4">
+        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 mb-8 animate-in fade-in slide-in-from-top-4 relative group">
           <p className="text-sm font-medium text-slate-600 italic leading-relaxed text-center">
             "{preCheckInQuote}"
           </p>
+          {preCheckInSnippet && (
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
+              <button
+                type="button"
+                onClick={() => handleSnippetInteraction(preCheckInSnippet!.id, 'like')}
+                className={`p-1 rounded-full transition-colors ${preCheckInSnippet.likedBy?.includes(user.id) ? 'text-emerald-500 bg-emerald-50' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-50'}`}
+              >
+                <svg className="w-4 h-4" fill={preCheckInSnippet.likedBy?.includes(user.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+              <div className="w-px bg-slate-200"></div>
+              <button
+                type="button"
+                onClick={() => handleSnippetInteraction(preCheckInSnippet!.id, 'pass')}
+                className={`p-1 rounded-full transition-colors ${preCheckInSnippet.passedBy?.includes(user.id) ? 'text-rose-500 bg-rose-50' : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'}`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
