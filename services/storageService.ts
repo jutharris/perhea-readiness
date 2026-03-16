@@ -34,11 +34,15 @@ export const storageService = {
       content: d.content,
       theme: d.theme,
       approved: d.approved,
+      likes: d.likes || 0,
+      passes: d.passes || 0,
+      likedBy: d.liked_by || [],
+      passedBy: d.passed_by || [],
       createdAt: d.created_at
     }));
   },
 
-  saveEducationSnippets: async (snippets: Omit<EducationSnippet, 'id' | 'createdAt'>[]): Promise<void> => {
+  saveEducationSnippets: async (snippets: Omit<EducationSnippet, 'id' | 'createdAt' | 'likes' | 'passes' | 'likedBy' | 'passedBy'>[]): Promise<void> => {
     checkConfig();
     const payload = snippets.map(s => ({
       type: s.type,
@@ -88,6 +92,91 @@ export const storageService = {
       console.error("Error deleting snippet:", error);
       throw error;
     }
+  },
+
+  interactWithSnippet: async (snippetId: string, action: 'like' | 'pass', userId: string): Promise<void> => {
+    checkConfig();
+    try {
+      const { data: snippet, error: fetchError } = await supabase!
+        .from('education_snippets')
+        .select('likes, passes, liked_by, passed_by')
+        .eq('id', snippetId)
+        .single();
+        
+      if (fetchError || !snippet) throw fetchError;
+      
+      const likedBy = snippet.liked_by || [];
+      const passedBy = snippet.passed_by || [];
+      
+      if (likedBy.includes(userId) || passedBy.includes(userId)) {
+        return; // User already interacted
+      }
+      
+      const dbUpdates: any = {};
+      if (action === 'like') {
+        dbUpdates.likes = (snippet.likes || 0) + 1;
+        dbUpdates.liked_by = [...likedBy, userId];
+      } else {
+        dbUpdates.passes = (snippet.passes || 0) + 1;
+        dbUpdates.passed_by = [...passedBy, userId];
+      }
+      
+      await supabase!
+        .from('education_snippets')
+        .update(dbUpdates)
+        .eq('id', snippetId);
+    } catch (err) {
+      console.error("Error interacting with snippet:", err);
+    }
+  },
+
+  getEducationTopics: async (): Promise<EducationTopic[]> => {
+    checkConfig();
+    try {
+      const { data, error } = await supabase!
+        .from('education_topics')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) return [];
+      
+      return (data || []).map(d => ({
+        id: d.id,
+        name: d.name,
+        isActive: d.is_active,
+        lastGeneratedAt: d.last_generated_at,
+        createdAt: d.created_at
+      }));
+    } catch (err) {
+      return [];
+    }
+  },
+
+  createEducationTopic: async (name: string): Promise<void> => {
+    checkConfig();
+    await supabase!
+      .from('education_topics')
+      .insert([{ name }]);
+  },
+
+  updateEducationTopic: async (id: string, updates: Partial<EducationTopic>): Promise<void> => {
+    checkConfig();
+    const dbUpdates: any = {};
+    if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
+    if (updates.lastGeneratedAt !== undefined) dbUpdates.last_generated_at = updates.lastGeneratedAt;
+    
+    await supabase!
+      .from('education_topics')
+      .update(dbUpdates)
+      .eq('id', id);
+  },
+
+  deleteEducationTopic: async (id: string): Promise<void> => {
+    checkConfig();
+    await supabase!
+      .from('education_topics')
+      .delete()
+      .eq('id', id);
   },
 
   // Purely fetches the profile from DB
