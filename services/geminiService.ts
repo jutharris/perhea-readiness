@@ -66,6 +66,46 @@ Return a JSON array of objects. Each object must have:
 };
 
 /**
+ * Suggests new education topics based on current topics.
+ */
+export const suggestEducationTopics = async (currentTopics: string[]): Promise<string[]> => {
+  const ai = getAIInstance();
+  if (!ai) return [];
+
+  const prompt = `You are an elite sports scientist and performance architect. 
+You need to suggest 5 new, compelling themes/topics for athlete education snippets.
+These themes should cover physiological, psychological, and performance concepts.
+
+Current/Past Topics (do not repeat these):
+${currentTopics.length > 0 ? currentTopics.join(', ') : 'None yet.'}
+
+Return a JSON array of 5 strings representing the new topics. Keep them concise (1-3 words).
+Example: ["CNS Fatigue", "Sleep Architecture", "Metabolic Flexibility"]`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3.1-pro-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING
+          }
+        }
+      }
+    });
+
+    const text = response.text || "[]";
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Failed to suggest topics", e);
+    return [];
+  }
+};
+
+/**
  * Analyzes individual athlete wellness data using a Turbulence Model (Multivariate Decoupling).
  * Uses a progressive baseline to establish "Normal Regimes."
  */
