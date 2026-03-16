@@ -40,14 +40,15 @@ const Sparkline: React.FC<{
     return data.findIndex(d => d.fullDate.startsWith(inflectionPoint.date));
   }, [data, isHighlighted, inflectionPoint]);
 
-  const normalData = useMemo(() => {
-    if (inflectionIndex === -1) return data;
-    return data.map((d, i) => i <= inflectionIndex ? d : { ...d, [metricKey]: undefined });
-  }, [data, inflectionIndex, metricKey]);
-
-  const highlightedData = useMemo(() => {
-    if (inflectionIndex === -1) return [];
-    return data.map((d, i) => i >= inflectionIndex ? d : { ...d, [metricKey]: undefined });
+  const chartData = useMemo(() => {
+    return data.map((d, i) => {
+      const val = d[metricKey];
+      return {
+        ...d,
+        normalVal: inflectionIndex === -1 || i <= inflectionIndex ? val : null,
+        highlightVal: inflectionIndex !== -1 && i >= inflectionIndex ? val : null,
+      };
+    });
   }, [data, inflectionIndex, metricKey]);
 
   const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7] as [number, number];
@@ -67,7 +68,7 @@ const Sparkline: React.FC<{
       </div>
       <div className="flex-1 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
               <linearGradient id={`gradient-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={activeColor} stopOpacity={0.1}/>
@@ -100,8 +101,7 @@ const Sparkline: React.FC<{
             {/* Normal Line (Before Inflection) */}
             <Line 
               type="monotone" 
-              data={normalData}
-              dataKey={metricKey} 
+              dataKey="normalVal" 
               stroke={!isCurrentlyDecoupled && isHighlighted ? "#e2e8f0" : activeColor} 
               strokeWidth={!isCurrentlyDecoupled && isHighlighted ? 1.5 : 2} 
               dot={false}
@@ -112,8 +112,7 @@ const Sparkline: React.FC<{
             {isHighlighted && (
               <Line 
                 type="monotone" 
-                data={highlightedData}
-                dataKey={metricKey} 
+                dataKey="highlightVal" 
                 stroke={activeColor} 
                 strokeWidth={3} 
                 dot={false}
