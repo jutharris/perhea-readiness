@@ -24,6 +24,16 @@ const Sparkline: React.FC<{
   const currentVal = data[data.length - 1]?.[metricKey];
   const isHighlighted = inflectionPoint?.metric === metricKey;
   
+  const isCurrentlyDecoupled = useMemo(() => {
+    if (currentVal === undefined || !stats || stats.mean === undefined || stats.stdDev === undefined) return false;
+    const minNormal = stats.mean - stats.stdDev;
+    const maxNormal = stats.mean + stats.stdDev;
+    // We consider it decoupled if it's strictly outside the normal band
+    return currentVal < minNormal || currentVal > maxNormal;
+  }, [currentVal, stats]);
+
+  const activeColor = isCurrentlyDecoupled ? "#f59e0b" : "#4f46e5"; // amber-500 vs indigo-600
+  
   // Calculate inflection index
   const inflectionIndex = useMemo(() => {
     if (!isHighlighted || !inflectionPoint?.date) return -1;
@@ -43,11 +53,11 @@ const Sparkline: React.FC<{
   const yDomain = metricKey === 'sleepHours' ? [0, 12] : [0, 7] as [number, number];
 
   return (
-    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-40">
+    <div className={`bg-white p-4 rounded-2xl border ${isCurrentlyDecoupled ? 'border-amber-200 shadow-amber-500/10' : 'border-slate-100 shadow-sm'} flex flex-col h-40 transition-colors duration-500`}>
       <div className="flex justify-between items-start mb-2">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
         <div className="flex flex-col items-end">
-          <span className={`text-sm font-black ${isHighlighted ? 'text-indigo-600' : 'text-slate-900'}`}>{currentVal}</span>
+          <span className={`text-sm font-black ${isCurrentlyDecoupled ? 'text-amber-500' : isHighlighted ? 'text-indigo-600' : 'text-slate-900'}`}>{currentVal}</span>
           {stats && stats.mean !== undefined && stats.stdDev !== undefined && (
             <span className="text-[9px] font-medium text-slate-500 mt-0.5">
               Avg: {stats.mean.toFixed(1)} | Normal: {Math.max(0, stats.mean - stats.stdDev).toFixed(1)} - {Math.min(yDomain[1], stats.mean + stats.stdDev).toFixed(1)}
@@ -60,8 +70,8 @@ const Sparkline: React.FC<{
           <ComposedChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
               <linearGradient id={`gradient-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                <stop offset="5%" stopColor={activeColor} stopOpacity={0.1}/>
+                <stop offset="95%" stopColor={activeColor} stopOpacity={0}/>
               </linearGradient>
             </defs>
             <YAxis domain={yDomain} hide />
@@ -92,8 +102,8 @@ const Sparkline: React.FC<{
               type="monotone" 
               data={normalData}
               dataKey={metricKey} 
-              stroke={isHighlighted ? "#e2e8f0" : "#4f46e5"} 
-              strokeWidth={isHighlighted ? 1.5 : 2} 
+              stroke={!isCurrentlyDecoupled && isHighlighted ? "#e2e8f0" : activeColor} 
+              strokeWidth={!isCurrentlyDecoupled && isHighlighted ? 1.5 : 2} 
               dot={false}
               animationDuration={1000}
             />
@@ -104,7 +114,7 @@ const Sparkline: React.FC<{
                 type="monotone" 
                 data={highlightedData}
                 dataKey={metricKey} 
-                stroke="#4f46e5" 
+                stroke={activeColor} 
                 strokeWidth={3} 
                 dot={false}
                 animationDuration={1000}
@@ -119,7 +129,7 @@ const Sparkline: React.FC<{
               dot={(props: any) => {
                 const { cx, cy, index } = props;
                 if (index === data.length - 1) {
-                  return <circle cx={cx} cy={cy} r={3} fill="#4f46e5" stroke="white" strokeWidth={2} />;
+                  return <circle cx={cx} cy={cy} r={4} fill={activeColor} stroke="white" strokeWidth={2} />;
                 }
                 return null;
               }}
