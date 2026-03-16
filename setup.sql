@@ -24,13 +24,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   has_wearable BOOLEAN DEFAULT true,
   queued_alert TEXT,
   intelligence_packet JSONB,
-  timezone TEXT DEFAULT 'UTC',
+  timezone TEXT DEFAULT 'America/New_York',
   last_active_at TIMESTAMPTZ DEFAULT now(),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_coach_id ON public.profiles(coach_id);
+
+CREATE TABLE IF NOT EXISTS public.education_topics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  last_generated_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.education_snippets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL,
+  regime TEXT,
+  theme TEXT,
+  content TEXT NOT NULL,
+  approved BOOLEAN DEFAULT false,
+  likes INTEGER DEFAULT 0,
+  passes INTEGER DEFAULT 0,
+  liked_by UUID[] DEFAULT '{}',
+  passed_by UUID[] DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS public.wellness_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -101,6 +123,8 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coach_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.submax_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.global_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.education_topics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.education_snippets ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
     DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
@@ -115,6 +139,11 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
     DROP POLICY IF EXISTS "Allow public read access to global_config" ON public.global_config;
     DROP POLICY IF EXISTS "Allow authenticated updates to global_config" ON public.global_config;
+    DROP POLICY IF EXISTS "Public topics are viewable by everyone" ON public.education_topics;
+    DROP POLICY IF EXISTS "Admins can manage topics" ON public.education_topics;
+    DROP POLICY IF EXISTS "Public snippets are viewable by everyone" ON public.education_snippets;
+    DROP POLICY IF EXISTS "Admins can manage snippets" ON public.education_snippets;
+    DROP POLICY IF EXISTS "Users can update snippet interactions" ON public.education_snippets;
 EXCEPTION WHEN undefined_object THEN NULL; END $$;
 
 -- Policies
@@ -167,6 +196,20 @@ CREATE POLICY "Users can update their own received messages" ON public.messages 
 CREATE POLICY "Allow public read access to global_config" ON public.global_config FOR SELECT USING (true);
 CREATE POLICY "Allow authenticated updates to global_config" ON public.global_config FOR ALL USING (
   (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+
+-- Education Policies
+CREATE POLICY "Public topics are viewable by everyone" ON public.education_topics FOR SELECT USING (true);
+CREATE POLICY "Admins can manage topics" ON public.education_topics FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+
+CREATE POLICY "Public snippets are viewable by everyone" ON public.education_snippets FOR SELECT USING (true);
+CREATE POLICY "Admins can manage snippets" ON public.education_snippets FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'ADMIN'
+);
+CREATE POLICY "Users can update snippet interactions" ON public.education_snippets FOR UPDATE USING (
+  auth.uid() IS NOT NULL
 );
 
 -- Seed Data
